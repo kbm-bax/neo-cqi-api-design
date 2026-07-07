@@ -309,6 +309,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComplianceInfusionDetailResponse"
+              examples:
+                success:
+                  value:
+                    infusionId: "INF-123"
+                    deviceId: "DEV-100"
+                    deviceSerialNumber: "SN001"
+                    pumpType: "LVP"
+                    drugLibraryVersionId: "DLV-1002"
+                    careAreaId: "CA-ICU"
+                    careAreaName: "ICU"
+                    drugId: "DRUG-HEPARIN"
+                    drugName: "Heparin"
+                    complianceStatus: "NON_COMPLIANT"
+                    startedAt: "2026-01-02T10:30:00Z"
+                    endedAt: "2026-01-02T12:10:00Z"
+                    programmedRate: 25.0
+                    programmedRateUnit: "mL/hr"
+                    dataFreshness:
+                      asOf: "2026-07-07T04:00:00Z"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -377,6 +396,26 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ComplianceExportRequest"
+            examples:
+              csvExport:
+                summary: CSV export of non-compliant infusions
+                value:
+                  exportFormat: "CSV"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+                    complianceStatuses:
+                      - "NON_COMPLIANT"
+                  columns:
+                    - "infusionId"
+                    - "deviceSerialNumber"
+                    - "careAreaName"
+                    - "drugName"
+                    - "complianceStatus"
+                    - "startedAt"
       responses:
         "202":
           description: Export request accepted.
@@ -384,6 +423,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComplianceExportAcceptedResponse"
+              examples:
+                accepted:
+                  value:
+                    exportId: "EXP-1001"
+                    status: "PENDING"
+                    requestedAt: "2026-07-07T10:30:00Z"
+                    statusUrl: "/api/cqi/v1/compliance/exports/EXP-1001"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -410,6 +456,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComplianceExportStatusResponse"
+              examples:
+                completed:
+                  value:
+                    exportId: "EXP-1001"
+                    status: "COMPLETED"
+                    exportFormat: "CSV"
+                    requestedAt: "2026-07-07T10:30:00Z"
+                    completedAt: "2026-07-07T10:31:20Z"
+                    rowCount: 3342
+                    downloadUrl: "https://exports.cqi.example.com/EXP-1001.csv?sig=..."
+                    downloadExpiresAt: "2026-07-07T11:31:20Z"
+                pending:
+                  value:
+                    exportId: "EXP-1001"
+                    status: "PENDING"
+                    exportFormat: "CSV"
+                    requestedAt: "2026-07-07T10:30:00Z"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

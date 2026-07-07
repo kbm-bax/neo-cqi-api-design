@@ -1,0 +1,1464 @@
+openapi: 3.0.3
+info:
+  title: CQI Reference Data API
+  version: 0.1.0
+  description: >
+    Reference Data API for Neo CQI. This API provides CQI UI and reporting
+    services with stable business-facing reference data such as drug libraries,
+    drug library versions, care areas, drugs, devices, pump types, enterprise
+    hierarchy, and report filter metadata.
+
+    The API is intentionally storage-agnostic. It does not expose lakehouse
+    implementation details such as bronze, silver, gold, table names, SQL,
+    partitions, or underlying physical schemas.
+
+  contact:
+    name: CQI Platform Team
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Filter Model
+    description: Bootstrap APIs for CQI UI reference/filter data.
+  - name: Drug Libraries
+    description: Drug library and drug library version reference data.
+  - name: Care Areas
+    description: Care area reference data for selected drug library versions.
+  - name: Drugs
+    description: Drug reference data for reporting and filtering.
+  - name: Enterprise Hierarchy
+    description: Enterprise, facility, unit, and location hierarchy data.
+  - name: Devices
+    description: Device metadata used for CQI filtering and reporting.
+  - name: Report Filters
+    description: Metadata describing available filters per CQI report.
+
+paths:
+  /reference/filter-model:
+    get:
+      tags:
+        - Filter Model
+      summary: Get CQI reference filter model
+      description: >
+        Returns a bootstrap model for CQI UI filter initialization. This endpoint
+        is optimized for UI startup scenarios where the client needs drug
+        libraries, pump types, hierarchy roots, and filter metadata in a single
+        call.
+      operationId: getReferenceFilterModel
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: includeInactive
+          in: query
+          required: false
+          description: Include inactive reference data where applicable.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: CQI reference filter model.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferenceFilterModelResponse"
+              example:
+                drugLibraries:
+                  - drugLibraryId: DL-100
+                    displayId: Adult-ICU
+                    name: Adult ICU Library
+                    status: ACTIVE
+                    activeVersionId: DLV-1002
+                    activeVersionLabel: "2026.2"
+                pumpTypes:
+                  - pumpType: LVP
+                    displayName: Large Volume Pump
+                    status: ACTIVE
+                enterpriseHierarchyRoots:
+                  - nodeId: EH-1
+                    name: Enterprise A
+                    nodeType: ENTERPRISE
+                    status: ACTIVE
+                    hasChildren: true
+                reportFilters:
+                  - filterName: drugLibraryVersion
+                    displayName: Drug Library
+                    filterType: SINGLE_SELECT
+                    applicableReportTypes: [COMPLIANCE, LIMITS, DEVICE_USAGE]
+                    required: true
+                    valueSource: DRUG_LIBRARY_VERSIONS
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/drug-libraries:
+    get:
+      tags:
+        - Drug Libraries
+      summary: Search drug libraries
+      description: >
+        Returns drug libraries available to the current CQI user for reporting
+        and filtering.
+      operationId: searchDrugLibraries
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: search
+          in: query
+          required: false
+          description: Search text applied to drug library name or display name.
+          schema:
+            type: string
+            maxLength: 100
+        - name: activeOnly
+          in: query
+          required: false
+          description: Return only active drug libraries.
+          schema:
+            type: boolean
+            default: true
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Matching drug libraries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrugLibraryListResponse"
+              example:
+                items:
+                  - drugLibraryId: DL-100
+                    displayId: Adult-ICU
+                    name: Adult ICU Library
+                    status: ACTIVE
+                    activeVersionId: DLV-1002
+                    activeVersionLabel: "2026.2"
+                page:
+                  page: 1
+                  pageSize: 50
+                  totalItems: 1
+                  hasMore: false
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/drug-libraries/{drugLibraryId}:
+    get:
+      tags:
+        - Drug Libraries
+      summary: Get drug library by ID
+      operationId: getDrugLibraryById
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/DrugLibraryId"
+      responses:
+        "200":
+          description: Drug library details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrugLibrary"
+              example:
+                drugLibraryId: DL-100
+                displayId: Adult-ICU
+                name: Adult ICU Library
+                description: Drug library used for Adult ICU care area.
+                status: ACTIVE
+                activeVersionId: DLV-1002
+                activeVersionLabel: "2026.2"
+                supportedPumpTypes:
+                  - pumpType: LVP
+                    displayName: Large Volume Pump
+                    status: ACTIVE
+                lastUpdatedAt: "2026-07-07T09:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/drug-libraries/{drugLibraryId}/versions:
+    get:
+      tags:
+        - Drug Libraries
+      summary: Get versions for a drug library
+      description: >
+        Returns available versions for a selected drug library. CQI reports
+        should use version-aware filtering where report results depend on the
+        active or selected library version.
+      operationId: getDrugLibraryVersions
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/DrugLibraryId"
+        - name: status
+          in: query
+          required: false
+          description: Optional drug library version status filter.
+          schema:
+            $ref: "#/components/schemas/ReferenceStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Drug library versions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrugLibraryVersionListResponse"
+              example:
+                items:
+                  - drugLibraryVersionId: DLV-1002
+                    drugLibraryId: DL-100
+                    versionLabel: "2026.2"
+                    status: ACTIVE
+                    isActive: true
+                    effectiveFrom: "2026-04-01T00:00:00Z"
+                page:
+                  page: 1
+                  pageSize: 50
+                  totalItems: 1
+                  hasMore: false
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/drug-library-versions/{drugLibraryVersionId}/care-areas:
+    get:
+      tags:
+        - Care Areas
+      summary: Get care areas for a drug library version
+      operationId: getCareAreasForDrugLibraryVersion
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/DrugLibraryVersionId"
+        - name: search
+          in: query
+          required: false
+          description: Search text applied to care area name.
+          schema:
+            type: string
+            maxLength: 100
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Care areas for the selected drug library version.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CareAreaListResponse"
+              example:
+                items:
+                  - careAreaId: CA-ICU
+                    drugLibraryVersionId: DLV-1002
+                    name: ICU
+                    displayName: Intensive Care Unit
+                    status: ACTIVE
+                page:
+                  page: 1
+                  pageSize: 50
+                  totalItems: 1
+                  hasMore: false
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/care-areas/{careAreaId}:
+    get:
+      tags:
+        - Care Areas
+      summary: Get care area by ID
+      operationId: getCareAreaById
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/CareAreaId"
+        - name: drugLibraryVersionId
+          in: query
+          required: false
+          description: Optional version scope when care area IDs are not globally unique.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Care area details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CareArea"
+              example:
+                careAreaId: CA-ICU
+                drugLibraryVersionId: DLV-1002
+                name: ICU
+                displayName: Intensive Care Unit
+                status: ACTIVE
+                lastUpdatedAt: "2026-07-07T09:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/drugs:
+    get:
+      tags:
+        - Drugs
+      summary: Search drugs
+      description: >
+        Searches drugs available for CQI reporting. The search may be scoped by
+        drug library version and care area.
+      operationId: searchDrugs
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: drugLibraryVersionId
+          in: query
+          required: false
+          description: Filters drugs by drug library version.
+          schema:
+            type: string
+        - name: careAreaId
+          in: query
+          required: false
+          description: Filters drugs by care area.
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: false
+          description: Search text applied to drug name or alias.
+          schema:
+            type: string
+            maxLength: 100
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Matching drugs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrugListResponse"
+              example:
+                items:
+                  - drugId: DRUG-HEPARIN
+                    drugLibraryVersionId: DLV-1002
+                    careAreaIds: [CA-ICU]
+                    name: Heparin
+                    displayName: Heparin
+                    aliases: [HEPARIN, Heparin Sodium]
+                    status: ACTIVE
+                page:
+                  page: 1
+                  pageSize: 50
+                  totalItems: 1
+                  hasMore: false
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/drugs/{drugId}:
+    get:
+      tags:
+        - Drugs
+      summary: Get drug by ID
+      operationId: getDrugById
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/DrugId"
+        - name: drugLibraryVersionId
+          in: query
+          required: false
+          description: Optional version scope when drug IDs are not globally unique.
+          schema:
+            type: string
+        - name: careAreaId
+          in: query
+          required: false
+          description: Optional care area scope.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Drug details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Drug"
+              example:
+                drugId: DRUG-HEPARIN
+                drugLibraryVersionId: DLV-1002
+                careAreaIds: [CA-ICU]
+                name: Heparin
+                displayName: Heparin
+                aliases: [HEPARIN, Heparin Sodium]
+                status: ACTIVE
+                medicationCode: "N02BA01"
+                lastUpdatedAt: "2026-07-07T09:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/enterprise-hierarchy:
+    get:
+      tags:
+        - Enterprise Hierarchy
+      summary: Get enterprise hierarchy root nodes
+      description: >
+        Returns enterprise hierarchy root nodes available to the current user.
+      operationId: getEnterpriseHierarchyRoots
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: nodeType
+          in: query
+          required: false
+          description: Optional hierarchy node type filter.
+          schema:
+            $ref: "#/components/schemas/EnterpriseHierarchyNodeType"
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Enterprise hierarchy root nodes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnterpriseHierarchyNodeListResponse"
+              example:
+                items:
+                  - nodeId: EH-1
+                    name: Enterprise A
+                    nodeType: ENTERPRISE
+                    status: ACTIVE
+                    hasChildren: true
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/enterprise-hierarchy/{nodeId}/children:
+    get:
+      tags:
+        - Enterprise Hierarchy
+      summary: Get child nodes for an enterprise hierarchy node
+      operationId: getEnterpriseHierarchyChildren
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/EnterpriseHierarchyNodeId"
+        - name: nodeType
+          in: query
+          required: false
+          description: Optional child node type filter.
+          schema:
+            $ref: "#/components/schemas/EnterpriseHierarchyNodeType"
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Child hierarchy nodes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnterpriseHierarchyNodeListResponse"
+              example:
+                items:
+                  - nodeId: EH-100
+                    parentNodeId: EH-1
+                    name: General Hospital
+                    displayName: General Hospital - Main Campus
+                    nodeType: FACILITY
+                    status: ACTIVE
+                    hasChildren: true
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/devices:
+    get:
+      tags:
+        - Devices
+      summary: Search devices
+      description: >
+        Searches CQI device metadata used for filtering and report context.
+        This endpoint represents reference/device master data and should not be
+        used to retrieve infusion history or device utilization metrics.
+      operationId: searchDevices
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: serialNumber
+          in: query
+          required: false
+          description: Search by device serial number.
+          schema:
+            type: string
+            maxLength: 100
+        - name: pumpType
+          in: query
+          required: false
+          description: Filter by pump type.
+          schema:
+            type: string
+        - name: enterpriseHierarchyNodeId
+          in: query
+          required: false
+          description: Filter devices by enterprise hierarchy node.
+          schema:
+            type: string
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Matching devices.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceListResponse"
+              example:
+                items:
+                  - deviceId: DEV-100
+                    serialNumber: SN123456
+                    pumpType: LVP
+                    model: Novum IQ
+                    enterpriseHierarchyNodeId: EH-100
+                    status: ACTIVE
+                page:
+                  page: 1
+                  pageSize: 50
+                  totalItems: 1
+                  hasMore: false
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/devices/{deviceId}:
+    get:
+      tags:
+        - Devices
+      summary: Get device by ID
+      operationId: getDeviceById
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Device details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+              example:
+                deviceId: DEV-100
+                serialNumber: SN123456
+                pumpType: LVP
+                model: Novum IQ
+                enterpriseHierarchyNodeId: EH-100
+                status: ACTIVE
+                lastUpdatedAt: "2026-07-07T09:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/pump-types:
+    get:
+      tags:
+        - Devices
+      summary: Get supported pump types
+      operationId: getPumpTypes
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Supported pump types.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PumpTypeListResponse"
+              example:
+                items:
+                  - pumpType: LVP
+                    displayName: Large Volume Pump
+                    status: ACTIVE
+                  - pumpType: SYRINGE
+                    displayName: Syringe Pump
+                    status: ACTIVE
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /reference/report-filters:
+    get:
+      tags:
+        - Report Filters
+      summary: Get report filter metadata
+      description: >
+        Returns metadata describing filters supported by one or more CQI reports.
+        This allows CQI UI to render filter controls based on report capability
+        rather than hardcoding every report-specific filter.
+      operationId: getReportFilters
+      parameters:
+        - $ref: "#/components/parameters/AcceptLanguage"
+        - name: reportType
+          in: query
+          required: false
+          description: Optional CQI report type.
+          schema:
+            $ref: "#/components/schemas/ReportType"
+      responses:
+        "200":
+          description: CQI report filter metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportFilterMetadataResponse"
+              example:
+                items:
+                  - filterName: drugLibraryVersion
+                    displayName: Drug Library
+                    filterType: SINGLE_SELECT
+                    applicableReportTypes: [COMPLIANCE, LIMITS, DEVICE_USAGE]
+                    required: true
+                    valueSource: DRUG_LIBRARY_VERSIONS
+                  - filterName: careArea
+                    displayName: Care Area
+                    filterType: MULTI_SELECT
+                    applicableReportTypes: [COMPLIANCE, LIMITS]
+                    required: false
+                    dependsOn: [drugLibraryVersion]
+                    valueSource: CARE_AREAS
+                dataFreshness:
+                  asOf: "2026-07-07T10:30:00Z"
+                  sourceVersion: watermark-20260707-103000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      description: Preferred response language/locale.
+      schema:
+        type: string
+        example: en-US
+
+    Page:
+      name: page
+      in: query
+      required: false
+      description: One-based page number.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Number of items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 50
+
+    Sort:
+      name: sort
+      in: query
+      required: false
+      description: >
+        Sort expression. Use field name optionally prefixed with '-' for
+        descending sort. Example: name or -name.
+      schema:
+        type: string
+        example: name
+
+    DrugLibraryId:
+      name: drugLibraryId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    DrugLibraryVersionId:
+      name: drugLibraryVersionId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    CareAreaId:
+      name: careAreaId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    DrugId:
+      name: drugId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    EnterpriseHierarchyNodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: The caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ReferenceStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - INACTIVE
+        - RETIRED
+        - UNKNOWN
+
+    ReportType:
+      type: string
+      enum:
+        - COMPLIANCE
+        - LIMITS
+        - DOSE_RATE_CHANGE
+        - DEVICE_USAGE
+        - INFUSION_STORY
+        - GUARDIAN_ALERTS
+
+    EnterpriseHierarchyNodeType:
+      type: string
+      enum:
+        - ENTERPRISE
+        - REGION
+        - FACILITY
+        - HOSPITAL
+        - DEPARTMENT
+        - UNIT
+        - LOCATION
+        - UNKNOWN
+
+    PageMetadata:
+      type: object
+      required:
+        - page
+        - pageSize
+        - hasMore
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when total count is expensive.
+          example: 250
+        hasMore:
+          type: boolean
+          example: true
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          description: Time at which the returned reference data was last known fresh.
+          example: "2026-07-07T10:30:00Z"
+        sourceVersion:
+          type: string
+          nullable: true
+          description: Optional semantic source version, batch ID, event watermark, or projection version.
+          example: "watermark-20260707-103000"
+
+    DrugLibrary:
+      type: object
+      required:
+        - drugLibraryId
+        - name
+        - status
+      properties:
+        drugLibraryId:
+          type: string
+          example: DL-100
+        displayId:
+          type: string
+          nullable: true
+          example: Adult-ICU
+        name:
+          type: string
+          example: Adult ICU Library
+        description:
+          type: string
+          nullable: true
+          example: Drug library used for Adult ICU care area.
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+        activeVersionId:
+          type: string
+          nullable: true
+          example: DLV-1002
+        activeVersionLabel:
+          type: string
+          nullable: true
+          example: "2026.2"
+        supportedPumpTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PumpType"
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    DrugLibraryVersion:
+      type: object
+      required:
+        - drugLibraryVersionId
+        - drugLibraryId
+        - versionLabel
+        - status
+      properties:
+        drugLibraryVersionId:
+          type: string
+          example: DLV-1002
+        drugLibraryId:
+          type: string
+          example: DL-100
+        versionLabel:
+          type: string
+          example: "2026.2"
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+        effectiveFrom:
+          type: string
+          format: date-time
+          nullable: true
+        effectiveTo:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+          example: true
+        supportedPumpTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PumpType"
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CareArea:
+      type: object
+      required:
+        - careAreaId
+        - name
+        - drugLibraryVersionId
+        - status
+      properties:
+        careAreaId:
+          type: string
+          example: CA-ICU
+        drugLibraryVersionId:
+          type: string
+          example: DLV-1002
+        name:
+          type: string
+          example: ICU
+        displayName:
+          type: string
+          nullable: true
+          example: Intensive Care Unit
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Drug:
+      type: object
+      required:
+        - drugId
+        - name
+        - drugLibraryVersionId
+        - status
+      properties:
+        drugId:
+          type: string
+          example: DRUG-HEPARIN
+        drugLibraryVersionId:
+          type: string
+          example: DLV-1002
+        careAreaIds:
+          type: array
+          items:
+            type: string
+          example:
+            - CA-ICU
+        name:
+          type: string
+          example: Heparin
+        displayName:
+          type: string
+          nullable: true
+          example: Heparin
+        aliases:
+          type: array
+          items:
+            type: string
+          example:
+            - HEPARIN
+            - Heparin Sodium
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+        medicationCode:
+          type: string
+          nullable: true
+          description: Optional external or clinical coding reference if available.
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PumpType:
+      type: object
+      required:
+        - pumpType
+        - displayName
+        - status
+      properties:
+        pumpType:
+          type: string
+          example: LVP
+        displayName:
+          type: string
+          example: Large Volume Pump
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+
+    EnterpriseHierarchyNode:
+      type: object
+      required:
+        - nodeId
+        - name
+        - nodeType
+        - status
+      properties:
+        nodeId:
+          type: string
+          example: EH-100
+        parentNodeId:
+          type: string
+          nullable: true
+          example: EH-10
+        name:
+          type: string
+          example: General Hospital
+        displayName:
+          type: string
+          nullable: true
+          example: General Hospital - Main Campus
+        nodeType:
+          $ref: "#/components/schemas/EnterpriseHierarchyNodeType"
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+        hasChildren:
+          type: boolean
+          example: true
+        path:
+          type: array
+          description: Optional hierarchy path from root to this node.
+          items:
+            $ref: "#/components/schemas/HierarchyPathNode"
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    HierarchyPathNode:
+      type: object
+      required:
+        - nodeId
+        - name
+        - nodeType
+      properties:
+        nodeId:
+          type: string
+          example: EH-1
+        name:
+          type: string
+          example: Enterprise A
+        nodeType:
+          $ref: "#/components/schemas/EnterpriseHierarchyNodeType"
+
+    Device:
+      type: object
+      required:
+        - deviceId
+        - serialNumber
+        - pumpType
+        - status
+      properties:
+        deviceId:
+          type: string
+          example: DEV-100
+        serialNumber:
+          type: string
+          example: SN123456
+        pumpType:
+          type: string
+          example: LVP
+        model:
+          type: string
+          nullable: true
+          example: Novum IQ
+        enterpriseHierarchyNodeId:
+          type: string
+          nullable: true
+          example: EH-100
+        status:
+          $ref: "#/components/schemas/ReferenceStatus"
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ReportFilterDefinition:
+      type: object
+      required:
+        - filterName
+        - displayName
+        - filterType
+        - applicableReportTypes
+        - required
+      properties:
+        filterName:
+          type: string
+          example: drugLibraryVersion
+        displayName:
+          type: string
+          example: Drug Library
+        filterType:
+          type: string
+          enum:
+            - SINGLE_SELECT
+            - MULTI_SELECT
+            - DATE_RANGE
+            - TEXT_SEARCH
+            - TOGGLE
+            - TREE_SELECT
+          example: SINGLE_SELECT
+        applicableReportTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportType"
+          example:
+            - COMPLIANCE
+            - LIMITS
+            - DEVICE_USAGE
+        required:
+          type: boolean
+          example: true
+        defaultValue:
+          nullable: true
+          description: Optional default value for the filter.
+        dependsOn:
+          type: array
+          description: Other filters that must be selected before this filter is populated.
+          items:
+            type: string
+          example:
+            - drugLibraryVersion
+        valueSource:
+          type: string
+          description: Logical source for UI to resolve filter values.
+          enum:
+            - DRUG_LIBRARIES
+            - DRUG_LIBRARY_VERSIONS
+            - CARE_AREAS
+            - DRUGS
+            - PUMP_TYPES
+            - ENTERPRISE_HIERARCHY
+            - DEVICES
+            - STATIC
+          example: CARE_AREAS
+
+    ReferenceFilterModelResponse:
+      type: object
+      required:
+        - drugLibraries
+        - pumpTypes
+        - enterpriseHierarchyRoots
+        - reportFilters
+        - dataFreshness
+      properties:
+        drugLibraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/DrugLibrary"
+        pumpTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PumpType"
+        enterpriseHierarchyRoots:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnterpriseHierarchyNode"
+        reportFilters:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportFilterDefinition"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DrugLibraryListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DrugLibrary"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DrugLibraryVersionListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DrugLibraryVersion"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    CareAreaListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareArea"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DrugListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Drug"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    EnterpriseHierarchyNodeListResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnterpriseHierarchyNode"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    PumpTypeListResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PumpType"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    ReportFilterMetadataResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportFilterDefinition"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: CQI_REFERENCE_DATA_NOT_FOUND
+        message:
+          type: string
+          example: Requested reference data was not found.
+        target:
+          type: string
+          nullable: true
+          example: drugLibraryId
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: 0HN7ABC123XYZ
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: INVALID_PARAMETER
+        message:
+          type: string
+          example: pageSize must be between 1 and 500.
+        target:
+          type: string
+          nullable: true
+          example: pageSize

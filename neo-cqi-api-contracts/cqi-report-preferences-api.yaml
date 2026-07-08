@@ -1,0 +1,896 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Report Preferences API
+  version: 1.0.0
+  description: |
+    CQI Report Preferences API for Neo CQI.
+
+    This API manages user-specific report preferences, saved filters,
+    report-specific filter state, sorting, column configuration, pagination,
+    and display preferences.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Report Preferences
+  - name: Saved Filters
+
+paths:
+
+  /report-preferences/me:
+    get:
+      tags:
+        - Report Preferences
+      operationId: getMyReportPreferences
+      summary: Get all report preferences for current user
+      responses:
+        "200":
+          description: Report preferences returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /report-preferences/me/{reportType}:
+    get:
+      tags:
+        - Report Preferences
+      operationId: getMyReportPreferenceByReportType
+      summary: Get current user's preference for a report
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      responses:
+        "200":
+          description: Report preference returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags:
+        - Report Preferences
+      operationId: upsertMyReportPreference
+      summary: Create or update current user's preference for a report
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertReportPreferenceRequest"
+            examples:
+              deviceUsagePreference:
+                value:
+                  preferenceName: "My Device Usage View"
+                  isDefault: true
+                  filters:
+                    dateRange:
+                      preset: "LAST_30_DAYS"
+                    drugLibraryScope:
+                      mode: "SELECTED"
+                      drugLibraryVersionIds:
+                        - "DLV-1002"
+                    pumpTypes:
+                      - "LVP"
+                    enterpriseHierarchyNodeIds:
+                      - "EH-100"
+                  sort:
+                    field: "lastUpdatedAt"
+                    direction: "DESC"
+                  columns:
+                    visibleColumns:
+                      - "deviceSerialNumber"
+                      - "connectionPercentage"
+                      - "averageUtilization"
+                      - "currentEnterpriseGroupName"
+                    columnOrder:
+                      - "deviceSerialNumber"
+                      - "connectionPercentage"
+                      - "averageUtilization"
+                      - "currentEnterpriseGroupName"
+                  display:
+                    selectedTab: "SUMMARY"
+                    tableDensity: "COMFORTABLE"
+      responses:
+        "200":
+          description: Report preference updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceResponse"
+        "201":
+          description: Report preference created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+      tags:
+        - Report Preferences
+      operationId: deleteMyReportPreference
+      summary: Delete current user's preference for a report
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      responses:
+        "204":
+          description: Report preference deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /report-preferences/me/{reportType}/saved-filters:
+    get:
+      tags:
+        - Saved Filters
+      operationId: getMySavedFilters
+      summary: List saved filters for a report
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      responses:
+        "200":
+          description: Saved filters returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedFilterListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags:
+        - Saved Filters
+      operationId: createMySavedFilter
+      summary: Create a saved filter for a report
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSavedFilterRequest"
+            examples:
+              limitsSavedFilter:
+                value:
+                  name: "ICU Heparin Limits"
+                  description: "Limits view for ICU and Heparin"
+                  isDefault: false
+                  filters:
+                    dateRange:
+                      preset: "LAST_30_DAYS"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+                    careAreaIds:
+                      - "CA-ICU"
+                    drugIds:
+                      - "DRUG-HEPARIN"
+      responses:
+        "201":
+          description: Saved filter created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedFilterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /report-preferences/me/{reportType}/saved-filters/{savedFilterId}:
+    get:
+      tags:
+        - Saved Filters
+      operationId: getMySavedFilterById
+      summary: Get saved filter by ID
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+        - $ref: "#/components/parameters/SavedFilterId"
+      responses:
+        "200":
+          description: Saved filter returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedFilterResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags:
+        - Saved Filters
+      operationId: updateMySavedFilter
+      summary: Update saved filter
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+        - $ref: "#/components/parameters/SavedFilterId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSavedFilterRequest"
+      responses:
+        "200":
+          description: Saved filter updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedFilterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+      tags:
+        - Saved Filters
+      operationId: deleteMySavedFilter
+      summary: Delete saved filter
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+        - $ref: "#/components/parameters/SavedFilterId"
+      responses:
+        "204":
+          description: Saved filter deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /report-preferences/me/{reportType}/saved-filters/{savedFilterId}/apply:
+    post:
+      tags:
+        - Saved Filters
+      operationId: applyMySavedFilter
+      summary: Apply saved filter
+      description: Records that a saved filter was applied and returns preference state for the UI.
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+        - $ref: "#/components/parameters/SavedFilterId"
+      responses:
+        "200":
+          description: Saved filter applied successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /report-preferences/me/{reportType}/default:
+    post:
+      tags:
+        - Report Preferences
+      operationId: setMyDefaultReportPreference
+      summary: Set default preference for a report
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDefaultPreferenceRequest"
+      responses:
+        "200":
+          description: Default preference set successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /report-preferences/me/{reportType}/reset:
+    post:
+      tags:
+        - Report Preferences
+      operationId: resetMyReportPreference
+      summary: Reset report preference to system default
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      responses:
+        "200":
+          description: Report preference reset successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPreferenceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ReportType:
+      name: reportType
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/ReportType"
+
+    SavedFilterId:
+      name: savedFilterId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "SF-10001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    ReportPreferenceListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportPreference"
+
+    ReportPreferenceResponse:
+      type: object
+      required:
+        - preference
+      properties:
+        preference:
+          $ref: "#/components/schemas/ReportPreference"
+
+    SavedFilterListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedFilter"
+
+    SavedFilterResponse:
+      type: object
+      required:
+        - savedFilter
+      properties:
+        savedFilter:
+          $ref: "#/components/schemas/SavedFilter"
+
+    UpsertReportPreferenceRequest:
+      type: object
+      properties:
+        preferenceName:
+          type: string
+          nullable: true
+          maxLength: 200
+          example: "My Device Usage View"
+        isDefault:
+          type: boolean
+          default: false
+        filters:
+          $ref: "#/components/schemas/ReportFilterState"
+        sort:
+          $ref: "#/components/schemas/ReportSortPreference"
+        columns:
+          $ref: "#/components/schemas/ReportColumnPreference"
+        display:
+          $ref: "#/components/schemas/ReportDisplayPreference"
+        pagination:
+          $ref: "#/components/schemas/ReportPaginationPreference"
+
+    CreateSavedFilterRequest:
+      type: object
+      required:
+        - name
+        - filters
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          example: "ICU Heparin Limits"
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+        isDefault:
+          type: boolean
+          default: false
+        filters:
+          $ref: "#/components/schemas/ReportFilterState"
+
+    UpdateSavedFilterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+        isDefault:
+          type: boolean
+        filters:
+          $ref: "#/components/schemas/ReportFilterState"
+
+    SetDefaultPreferenceRequest:
+      type: object
+      properties:
+        preferenceId:
+          type: string
+          nullable: true
+          example: "RP-10001"
+        savedFilterId:
+          type: string
+          nullable: true
+          example: "SF-10001"
+
+    ReportPreference:
+      type: object
+      required:
+        - preferenceId
+        - reportType
+      properties:
+        preferenceId:
+          type: string
+          example: "RP-10001"
+        userId:
+          type: string
+          nullable: true
+          description: May be omitted or masked in user-facing responses.
+          example: "USER-123"
+        reportType:
+          $ref: "#/components/schemas/ReportType"
+        preferenceName:
+          type: string
+          nullable: true
+          example: "My Device Usage View"
+        preferenceScope:
+          $ref: "#/components/schemas/PreferenceScope"
+        isDefault:
+          type: boolean
+          example: true
+        filters:
+          $ref: "#/components/schemas/ReportFilterState"
+        sort:
+          $ref: "#/components/schemas/ReportSortPreference"
+        columns:
+          $ref: "#/components/schemas/ReportColumnPreference"
+        display:
+          $ref: "#/components/schemas/ReportDisplayPreference"
+        pagination:
+          $ref: "#/components/schemas/ReportPaginationPreference"
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          minimum: 1
+          example: 1
+
+    SavedFilter:
+      type: object
+      required:
+        - savedFilterId
+        - reportType
+        - name
+        - filters
+      properties:
+        savedFilterId:
+          type: string
+          example: "SF-10001"
+        userId:
+          type: string
+          nullable: true
+          example: "USER-123"
+        reportType:
+          $ref: "#/components/schemas/ReportType"
+        name:
+          type: string
+          example: "ICU Heparin Limits"
+        description:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+          example: false
+        filters:
+          $ref: "#/components/schemas/ReportFilterState"
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          minimum: 1
+          example: 1
+
+    ReportFilterState:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRangePreference"
+
+        drugLibraryScope:
+          $ref: "#/components/schemas/DrugLibraryScope"
+
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+        careAreaIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "CA-ICU"
+
+        drugIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DRUG-HEPARIN"
+
+        pumpTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "LVP"
+
+        enterpriseHierarchyNodeIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EH-100"
+
+        deviceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DEV-100"
+
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+          example:
+            - "SN001"
+
+        reportSpecificFilters:
+          type: object
+          additionalProperties: true
+          description: Report-specific filter selections owned by the report context.
+
+        lastAppliedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    DateRangePreference:
+      type: object
+      properties:
+        preset:
+          $ref: "#/components/schemas/DateRangePreset"
+        from:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-31T23:59:59Z"
+
+    DrugLibraryScope:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - SELECTED
+            - ALL_CONFIGURED
+          example: "SELECTED"
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+    ReportSortPreference:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "lastUpdatedAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    ReportColumnPreference:
+      type: object
+      properties:
+        visibleColumns:
+          type: array
+          items:
+            type: string
+          example:
+            - "deviceSerialNumber"
+            - "connectionPercentage"
+            - "averageUtilization"
+        hiddenColumns:
+          type: array
+          items:
+            type: string
+        columnOrder:
+          type: array
+          items:
+            type: string
+        pinnedColumns:
+          type: array
+          items:
+            type: string
+
+    ReportDisplayPreference:
+      type: object
+      properties:
+        selectedTab:
+          type: string
+          nullable: true
+          example: "SUMMARY"
+        chartType:
+          type: string
+          nullable: true
+          example: "BAR"
+        graphView:
+          type: string
+          nullable: true
+          example: "UTILIZATION"
+        tableDensity:
+          $ref: "#/components/schemas/TableDensity"
+        expandedSections:
+          type: array
+          items:
+            type: string
+          example:
+            - "advancedFilters"
+
+    ReportPaginationPreference:
+      type: object
+      properties:
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    ReportType:
+      type: string
+      enum:
+        - COMPLIANCE
+        - LIMITS
+        - DOSE_RATE_CHANGE
+        - DEVICE_USAGE
+        - INFUSION_STORY
+        - GUARDIAN_ALERTS
+
+    PreferenceScope:
+      type: string
+      enum:
+        - USER
+        - SITE
+        - SYSTEM
+      default: USER
+
+    DateRangePreset:
+      type: string
+      enum:
+        - TODAY
+        - YESTERDAY
+        - LAST_7_DAYS
+        - LAST_30_DAYS
+        - THIS_MONTH
+        - LAST_MONTH
+        - CUSTOM
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    TableDensity:
+      type: string
+      enum:
+        - COMPACT
+        - COMFORTABLE
+        - SPACIOUS
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_REPORT_PREFERENCE_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid report preference request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_REPORT_TYPE"
+        message:
+          type: string
+          example: "The specified report type is not supported."
+        target:
+          type: string
+          nullable: true
+          example: "reportType"

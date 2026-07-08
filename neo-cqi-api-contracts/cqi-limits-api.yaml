@@ -1,0 +1,1218 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Limits API
+  version: 1.0.0
+  description: |
+    CQI Limits API for Neo CQI.
+
+    This API provides limit event summaries, breakdowns, trends,
+    event-level drill-down, parameter distribution data, infusion-story
+    references, and export support.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Limit Summary
+  - name: Limit Breakdown
+  - name: Limit Trends
+  - name: Limit Events
+  - name: Limit Parameter Distribution
+  - name: Limit Exports
+
+paths:
+
+  /limits/summary-query:
+    post:
+      tags:
+        - Limit Summary
+      operationId: getLimitSummary
+      summary: Get limit event summary
+      description: Returns aggregate limit-event metrics for a selected population.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitSummaryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+                    careAreaIds:
+                      - "CA-ICU"
+                    pumpTypes:
+                      - "LVP"
+                    limitTypes:
+                      - "SOFT_LIMIT"
+                      - "HARD_LIMIT"
+      responses:
+        "200":
+          description: Limit summary returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitSummaryResponse"
+              examples:
+                success:
+                  value:
+                    summary:
+                      totalLimitEvents: 2500
+                      softLimitEvents: 2100
+                      hardLimitEvents: 400
+                      spectrumIndirectLimitEvents: 25
+                      guardianLimitEvents: 10
+                      overrideCount: 600
+                      pullbackCount: 1400
+                      drugChangeCount: 250
+                      basicModeCount: 150
+                      cancelledCount: 100
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/breakdown-query:
+    post:
+      tags:
+        - Limit Breakdown
+      operationId: getLimitBreakdown
+      summary: Get limit event breakdown
+      description: Returns limit-event metrics grouped by a selected business dimension.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitBreakdownRequest"
+            examples:
+              byDrug:
+                value:
+                  groupBy: "DRUG"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+      responses:
+        "200":
+          description: Limit breakdown returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitBreakdownResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/trends-query:
+    post:
+      tags:
+        - Limit Trends
+      operationId: getLimitTrends
+      summary: Get limit event trend
+      description: Returns limit-event metrics over time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitTrendRequest"
+            examples:
+              daily:
+                value:
+                  granularity: "DAILY"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    limitTypes:
+                      - "SOFT_LIMIT"
+                      - "HARD_LIMIT"
+      responses:
+        "200":
+          description: Limit trend returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitTrendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/events-query:
+    post:
+      tags:
+        - Limit Events
+      operationId: searchLimitEvents
+      summary: Search limit events
+      description: Returns limit events for grid, drill-down, and export preparation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitEventQueryRequest"
+            examples:
+              softLimits:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    limitTypes:
+                      - "SOFT_LIMIT"
+                    nextActions:
+                      - "OVERRIDE"
+                      - "PULLBACK"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "occurredAt"
+                    direction: "DESC"
+      responses:
+        "200":
+          description: Limit events returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitEventListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/events/{limitEventId}:
+    get:
+      tags:
+        - Limit Events
+      operationId: getLimitEventById
+      summary: Get limit event details
+      parameters:
+        - $ref: "#/components/parameters/LimitEventId"
+      responses:
+        "200":
+          description: Limit event detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitEventDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/events/{limitEventId}/infusion-story-reference:
+    get:
+      tags:
+        - Limit Events
+      operationId: getLimitEventInfusionStoryReference
+      summary: Get infusion story reference for a limit event
+      description: |
+        Returns whether an infusion story can be shown for the selected limit event,
+        and provides the infusion reference when available.
+      parameters:
+        - $ref: "#/components/parameters/LimitEventId"
+      responses:
+        "200":
+          description: Infusion story reference returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryReferenceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/parameter-distribution-query:
+    post:
+      tags:
+        - Limit Parameter Distribution
+      operationId: getLimitParameterDistribution
+      summary: Get limit parameter distribution
+      description: |
+        Returns distribution data for visualizing programmed/attempted values
+        relative to configured soft, hard, Spectrum indirect, or Guardian limits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitParameterDistributionRequest"
+            examples:
+              doseDistribution:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+                    careAreaIds:
+                      - "CA-ICU"
+                    drugIds:
+                      - "DRUG-HEPARIN"
+                    limitParameters:
+                      - "DOSE"
+                  bucketStrategy:
+                    type: "RELATIVE_TO_LIMIT"
+                    bucketSize: 5
+      responses:
+        "200":
+          description: Limit parameter distribution returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitParameterDistributionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/exports:
+    post:
+      tags:
+        - Limit Exports
+      operationId: createLimitExport
+      summary: Create limit event export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimitExportRequest"
+      responses:
+        "202":
+          description: Export request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitExportAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /limits/exports/{exportId}:
+    get:
+      tags:
+        - Limit Exports
+      operationId: getLimitExportStatus
+      summary: Get limit export status
+      parameters:
+        - $ref: "#/components/parameters/ExportId"
+      responses:
+        "200":
+          description: Export status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitExportStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    LimitEventId:
+      name: limitEventId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "LE-10001"
+
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "EXP-LIMIT-1001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    LimitSummaryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/LimitFilter"
+
+    LimitBreakdownRequest:
+      type: object
+      required:
+        - groupBy
+        - filters
+      properties:
+        groupBy:
+          $ref: "#/components/schemas/LimitGroupBy"
+        filters:
+          $ref: "#/components/schemas/LimitFilter"
+
+    LimitTrendRequest:
+      type: object
+      required:
+        - granularity
+        - filters
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        filters:
+          $ref: "#/components/schemas/LimitFilter"
+
+    LimitEventQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/LimitFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    LimitParameterDistributionRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/LimitFilter"
+        bucketStrategy:
+          $ref: "#/components/schemas/BucketStrategy"
+
+    LimitExportRequest:
+      type: object
+      required:
+        - filters
+        - exportFormat
+      properties:
+        filters:
+          $ref: "#/components/schemas/LimitFilter"
+        exportFormat:
+          $ref: "#/components/schemas/ExportFormat"
+        columns:
+          type: array
+          items:
+            type: string
+          example:
+            - "limitEventId"
+            - "infusionId"
+            - "deviceSerialNumber"
+            - "careAreaName"
+            - "drugName"
+            - "limitType"
+            - "limitParameter"
+            - "nextAction"
+            - "occurredAt"
+
+    LimitFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+        careAreaIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "CA-ICU"
+
+        drugIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DRUG-HEPARIN"
+
+        deviceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DEV-100"
+
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+          example:
+            - "SN001"
+
+        pumpTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "LVP"
+            - "SYR"
+
+        enterpriseHierarchyNodeIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EH-100"
+
+        limitTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitType"
+
+        limitParameters:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitParameter"
+
+        limitDirections:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitDirection"
+
+        nextActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitNextAction"
+
+    DateRange:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          example: "2026-01-31T23:59:59Z"
+
+    LimitSummaryResponse:
+      type: object
+      required:
+        - summary
+        - dataFreshness
+      properties:
+        summary:
+          $ref: "#/components/schemas/LimitSummary"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    LimitBreakdownResponse:
+      type: object
+      required:
+        - groupBy
+        - items
+        - dataFreshness
+      properties:
+        groupBy:
+          $ref: "#/components/schemas/LimitGroupBy"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitBreakdownItem"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    LimitTrendResponse:
+      type: object
+      required:
+        - granularity
+        - points
+        - dataFreshness
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitTrendPoint"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    LimitEventListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitEvent"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    LimitEventDetailResponse:
+      type: object
+      required:
+        - limitEvent
+        - dataFreshness
+      properties:
+        limitEvent:
+          $ref: "#/components/schemas/LimitEventDetail"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryReferenceResponse:
+      type: object
+      required:
+        - limitEventId
+        - infusionId
+        - canShowInfusionStory
+      properties:
+        limitEventId:
+          type: string
+          example: "LE-10001"
+        infusionId:
+          type: string
+          example: "INF-123"
+        canShowInfusionStory:
+          type: boolean
+          example: true
+        reason:
+          type: string
+          nullable: true
+          example: "Infusion story is available because attempted value matches final pump run value."
+        storyReference:
+          type: object
+          nullable: true
+          properties:
+            infusionId:
+              type: string
+              example: "INF-123"
+            href:
+              type: string
+              example: "/api/cqi/v1/infusions/INF-123/story"
+
+    LimitParameterDistributionResponse:
+      type: object
+      required:
+        - buckets
+        - dataFreshness
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/LimitParameterDistributionBucket"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    LimitExportAcceptedResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-LIMIT-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+
+    LimitExportStatusResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-LIMIT-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        fileName:
+          type: string
+          nullable: true
+          example: "limits-export-202601.csv"
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if export is ready.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    LimitSummary:
+      type: object
+      required:
+        - totalLimitEvents
+        - softLimitEvents
+        - hardLimitEvents
+      properties:
+        totalLimitEvents:
+          type: integer
+          minimum: 0
+          example: 2500
+        softLimitEvents:
+          type: integer
+          minimum: 0
+          example: 2100
+        hardLimitEvents:
+          type: integer
+          minimum: 0
+          example: 400
+        spectrumIndirectLimitEvents:
+          type: integer
+          minimum: 0
+          example: 25
+        guardianLimitEvents:
+          type: integer
+          minimum: 0
+          example: 10
+        overrideCount:
+          type: integer
+          minimum: 0
+          example: 600
+        pullbackCount:
+          type: integer
+          minimum: 0
+          example: 1400
+        drugChangeCount:
+          type: integer
+          minimum: 0
+          example: 250
+        basicModeCount:
+          type: integer
+          minimum: 0
+          example: 150
+        cancelledCount:
+          type: integer
+          minimum: 0
+          example: 100
+
+    LimitBreakdownItem:
+      type: object
+      required:
+        - id
+        - name
+        - totalLimitEvents
+      properties:
+        id:
+          type: string
+          example: "DRUG-HEPARIN"
+        name:
+          type: string
+          example: "Heparin"
+        totalLimitEvents:
+          type: integer
+          minimum: 0
+          example: 250
+        softLimitEvents:
+          type: integer
+          minimum: 0
+          example: 220
+        hardLimitEvents:
+          type: integer
+          minimum: 0
+          example: 30
+        overrideCount:
+          type: integer
+          minimum: 0
+          example: 90
+        pullbackCount:
+          type: integer
+          minimum: 0
+          example: 130
+        eventRate:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+
+    LimitTrendPoint:
+      type: object
+      required:
+        - periodStart
+        - periodEnd
+        - totalLimitEvents
+      properties:
+        periodStart:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          example: "2026-01-01T23:59:59Z"
+        totalLimitEvents:
+          type: integer
+          minimum: 0
+          example: 80
+        softLimitEvents:
+          type: integer
+          minimum: 0
+          example: 70
+        hardLimitEvents:
+          type: integer
+          minimum: 0
+          example: 10
+        overrideCount:
+          type: integer
+          minimum: 0
+          example: 20
+        pullbackCount:
+          type: integer
+          minimum: 0
+          example: 50
+
+    LimitEvent:
+      type: object
+      required:
+        - limitEventId
+        - infusionId
+        - limitType
+        - occurredAt
+      properties:
+        limitEventId:
+          type: string
+          example: "LE-10001"
+        infusionId:
+          type: string
+          example: "INF-123"
+        deviceId:
+          type: string
+          nullable: true
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        drugLibraryVersionId:
+          type: string
+          nullable: true
+          example: "DLV-1002"
+        careAreaId:
+          type: string
+          nullable: true
+          example: "CA-ICU"
+        careAreaName:
+          type: string
+          nullable: true
+          example: "ICU"
+        drugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        drugName:
+          type: string
+          nullable: true
+          example: "Heparin"
+        limitType:
+          $ref: "#/components/schemas/LimitType"
+        limitParameter:
+          $ref: "#/components/schemas/LimitParameter"
+        limitDirection:
+          $ref: "#/components/schemas/LimitDirection"
+        nextAction:
+          $ref: "#/components/schemas/LimitNextAction"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:35:00Z"
+
+    LimitEventDetail:
+      allOf:
+        - $ref: "#/components/schemas/LimitEvent"
+        - type: object
+          properties:
+            attemptedValue:
+              $ref: "#/components/schemas/MeasuredValue"
+            limitValue:
+              $ref: "#/components/schemas/MeasuredValue"
+            finalPumpRunValue:
+              $ref: "#/components/schemas/MeasuredValue"
+            concentration:
+              $ref: "#/components/schemas/MeasuredValue"
+            sourceEventReference:
+              $ref: "#/components/schemas/SourceEventReference"
+            canShowInfusionStory:
+              type: boolean
+              example: true
+            infusionStoryAvailabilityReason:
+              type: string
+              nullable: true
+              example: "Infusion story available."
+
+    MeasuredValue:
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+        unit:
+          type: string
+          nullable: true
+          example: "mL/hr"
+
+    SourceEventReference:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+          nullable: true
+          example: "PUMP_EVENT"
+        sourceEventId:
+          type: string
+          nullable: true
+          example: "PUMP-EVT-9001"
+        eventCode:
+          type: string
+          nullable: true
+          example: "45056"
+
+    LimitParameterDistributionBucket:
+      type: object
+      required:
+        - bucketLabel
+        - eventCount
+      properties:
+        bucketLabel:
+          type: string
+          example: "0-5% above soft limit"
+        lowerBound:
+          type: number
+          format: double
+          nullable: true
+        upperBound:
+          type: number
+          format: double
+          nullable: true
+        eventCount:
+          type: integer
+          minimum: 0
+          example: 120
+        limitType:
+          $ref: "#/components/schemas/LimitType"
+        nextAction:
+          $ref: "#/components/schemas/LimitNextAction"
+
+    BucketStrategy:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - ABSOLUTE_VALUE
+            - RELATIVE_TO_LIMIT
+            - PERCENTAGE_FROM_LIMIT
+          example: "RELATIVE_TO_LIMIT"
+        bucketSize:
+          type: number
+          format: double
+          nullable: true
+          example: 5
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when count is expensive.
+          example: 1250
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "occurredAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    LimitType:
+      type: string
+      enum:
+        - SOFT_LIMIT
+        - HARD_LIMIT
+        - SPECTRUM_INDIRECT_LIMIT
+        - GUARDIAN_LIMIT
+        - UNKNOWN
+
+    LimitParameter:
+      type: string
+      enum:
+        - DOSE
+        - RATE
+        - VOLUME
+        - TIME
+        - CONCENTRATION
+        - DRUG_AMOUNT
+        - PATIENT_WEIGHT
+        - UNKNOWN
+
+    LimitDirection:
+      type: string
+      enum:
+        - UPPER
+        - LOWER
+        - UNKNOWN
+
+    LimitNextAction:
+      type: string
+      enum:
+        - OVERRIDE
+        - PULLBACK
+        - BASIC_MODE
+        - DRUG_CHANGE
+        - CANCELLED
+        - UNKNOWN
+        - NOT_APPLICABLE
+
+    LimitGroupBy:
+      type: string
+      enum:
+        - DRUG_LIBRARY_VERSION
+        - CARE_AREA
+        - DRUG
+        - PUMP_TYPE
+        - DEVICE
+        - ENTERPRISE_HIERARCHY
+        - LIMIT_TYPE
+        - LIMIT_PARAMETER
+        - NEXT_ACTION
+
+    TrendGranularity:
+      type: string
+      enum:
+        - DAILY
+        - WEEKLY
+        - MONTHLY
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ExportFormat:
+      type: string
+      enum:
+        - CSV
+        - XLSX
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_LIMITS_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid limits query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"

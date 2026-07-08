@@ -1,0 +1,1113 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Dose Rate Change API
+  version: 1.0.0
+  description: |
+    CQI Dose Rate Change API for Neo CQI.
+
+    This API provides dose rate change summaries, breakdowns, trends,
+    average metrics, event-level drill-down, and export support.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Dose Rate Change Summary
+  - name: Dose Rate Change Breakdown
+  - name: Dose Rate Change Trends
+  - name: Dose Rate Change Average Metrics
+  - name: Dose Rate Change Events
+  - name: Dose Rate Change Exports
+
+paths:
+
+  /dose-rate-changes/summary-query:
+    post:
+      tags:
+        - Dose Rate Change Summary
+      operationId: getDoseRateChangeSummary
+      summary: Get dose rate change summary
+      description: Returns aggregate dose-rate-change metrics for a selected population.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoseRateChangeSummaryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+                    careAreaIds:
+                      - "CA-ICU"
+                    pumpTypes:
+                      - "LVP"
+                    outcomes:
+                      - "WITHIN_LIMIT"
+                      - "LIMIT_EVENT"
+      responses:
+        "200":
+          description: Dose rate change summary returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeSummaryResponse"
+              examples:
+                success:
+                  value:
+                    summary:
+                      totalDoseRateChanges: 3150
+                      increaseCount: 1800
+                      decreaseCount: 1350
+                      withinLimitCount: 2500
+                      limitEventCount: 650
+                      pullbackCount: 400
+                      overrideCount: 250
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/breakdown-query:
+    post:
+      tags:
+        - Dose Rate Change Breakdown
+      operationId: getDoseRateChangeBreakdown
+      summary: Get dose rate change breakdown
+      description: Returns dose-rate-change metrics grouped by a selected business dimension.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoseRateChangeBreakdownRequest"
+            examples:
+              byDrug:
+                value:
+                  groupBy: "DRUG"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+      responses:
+        "200":
+          description: Dose rate change breakdown returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeBreakdownResponse"
+              examples:
+                success:
+                  value:
+                    groupBy: "DRUG"
+                    items:
+                      - id: "DRUG-HEPARIN"
+                        name: "Heparin"
+                        totalDoseRateChanges: 250
+                        increaseCount: 150
+                        decreaseCount: 100
+                        withinLimitCount: 200
+                        limitEventCount: 50
+                        pullbackCount: 30
+                        overrideCount: 20
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/trends-query:
+    post:
+      tags:
+        - Dose Rate Change Trends
+      operationId: getDoseRateChangeTrends
+      summary: Get dose rate change trend
+      description: Returns dose-rate-change metrics over time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoseRateChangeTrendRequest"
+            examples:
+              daily:
+                value:
+                  granularity: "DAILY"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    directions:
+                      - "INCREASE"
+                      - "DECREASE"
+      responses:
+        "200":
+          description: Dose rate change trend returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeTrendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/average-metrics-query:
+    post:
+      tags:
+        - Dose Rate Change Average Metrics
+      operationId: getDoseRateChangeAverageMetrics
+      summary: Get dose rate change average metrics
+      description: |
+        Returns average dose-rate-change metrics for attempted increases/decreases
+        and completed changes by outcome category.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoseRateChangeAverageMetricsRequest"
+      responses:
+        "200":
+          description: Average metrics returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeAverageMetricsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/events-query:
+    post:
+      tags:
+        - Dose Rate Change Events
+      operationId: searchDoseRateChangeEvents
+      summary: Search dose rate change events
+      description: Returns dose-rate-change events for grid, drill-down, and export preparation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoseRateChangeEventQueryRequest"
+            examples:
+              pullbacks:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    outcomes:
+                      - "PULLBACK"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "occurredAt"
+                    direction: "DESC"
+      responses:
+        "200":
+          description: Dose rate change events returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeEventListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/events/{doseRateChangeEventId}:
+    get:
+      tags:
+        - Dose Rate Change Events
+      operationId: getDoseRateChangeEventById
+      summary: Get dose rate change event details
+      parameters:
+        - $ref: "#/components/parameters/DoseRateChangeEventId"
+      responses:
+        "200":
+          description: Dose rate change event detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeEventDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/exports:
+    post:
+      tags:
+        - Dose Rate Change Exports
+      operationId: createDoseRateChangeExport
+      summary: Create dose rate change export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoseRateChangeExportRequest"
+      responses:
+        "202":
+          description: Export request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeExportAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /dose-rate-changes/exports/{exportId}:
+    get:
+      tags:
+        - Dose Rate Change Exports
+      operationId: getDoseRateChangeExportStatus
+      summary: Get dose rate change export status
+      parameters:
+        - $ref: "#/components/parameters/ExportId"
+      responses:
+        "200":
+          description: Export status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoseRateChangeExportStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DoseRateChangeEventId:
+      name: doseRateChangeEventId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "DRC-10001"
+
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "EXP-DRC-1001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    DoseRateChangeSummaryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DoseRateChangeFilter"
+
+    DoseRateChangeBreakdownRequest:
+      type: object
+      required:
+        - groupBy
+        - filters
+      properties:
+        groupBy:
+          $ref: "#/components/schemas/DoseRateChangeGroupBy"
+        filters:
+          $ref: "#/components/schemas/DoseRateChangeFilter"
+
+    DoseRateChangeTrendRequest:
+      type: object
+      required:
+        - granularity
+        - filters
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        filters:
+          $ref: "#/components/schemas/DoseRateChangeFilter"
+
+    DoseRateChangeAverageMetricsRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DoseRateChangeFilter"
+
+    DoseRateChangeEventQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DoseRateChangeFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DoseRateChangeExportRequest:
+      type: object
+      required:
+        - filters
+        - exportFormat
+      properties:
+        filters:
+          $ref: "#/components/schemas/DoseRateChangeFilter"
+        exportFormat:
+          $ref: "#/components/schemas/ExportFormat"
+        columns:
+          type: array
+          items:
+            type: string
+          example:
+            - "doseRateChangeEventId"
+            - "infusionId"
+            - "occurredAt"
+            - "drugName"
+            - "careAreaName"
+            - "priorDoseRate"
+            - "attemptedDoseRate"
+            - "resultingDoseRate"
+            - "outcome"
+
+    DoseRateChangeFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+        careAreaIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "CA-ICU"
+
+        drugIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DRUG-HEPARIN"
+
+        deviceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DEV-100"
+
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+          example:
+            - "SN001"
+
+        pumpTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "LVP"
+            - "SYR"
+
+        enterpriseHierarchyNodeIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EH-100"
+
+        directions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoseRateChangeDirection"
+
+        outcomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoseRateChangeOutcome"
+
+        programTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "PRIMARY"
+            - "SECONDARY"
+
+        modeTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "CONTINUOUS"
+            - "VOT"
+
+    DateRange:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          example: "2026-01-31T23:59:59Z"
+
+    DoseRateChangeSummaryResponse:
+      type: object
+      required:
+        - summary
+        - dataFreshness
+      properties:
+        summary:
+          $ref: "#/components/schemas/DoseRateChangeSummary"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DoseRateChangeBreakdownResponse:
+      type: object
+      required:
+        - groupBy
+        - items
+        - dataFreshness
+      properties:
+        groupBy:
+          $ref: "#/components/schemas/DoseRateChangeGroupBy"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoseRateChangeBreakdownItem"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DoseRateChangeTrendResponse:
+      type: object
+      required:
+        - granularity
+        - points
+        - dataFreshness
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoseRateChangeTrendPoint"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DoseRateChangeAverageMetricsResponse:
+      type: object
+      required:
+        - metrics
+        - dataFreshness
+      properties:
+        metrics:
+          $ref: "#/components/schemas/DoseRateChangeAverageMetrics"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DoseRateChangeEventListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoseRateChangeEvent"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DoseRateChangeEventDetailResponse:
+      type: object
+      required:
+        - doseRateChangeEvent
+        - dataFreshness
+      properties:
+        doseRateChangeEvent:
+          $ref: "#/components/schemas/DoseRateChangeEventDetail"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DoseRateChangeExportAcceptedResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-DRC-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+
+    DoseRateChangeExportStatusResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-DRC-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        fileName:
+          type: string
+          nullable: true
+          example: "dose-rate-change-export-202601.csv"
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if export is ready.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    DoseRateChangeSummary:
+      type: object
+      required:
+        - totalDoseRateChanges
+      properties:
+        totalDoseRateChanges:
+          type: integer
+          minimum: 0
+          example: 3150
+        increaseCount:
+          type: integer
+          minimum: 0
+          example: 1800
+        decreaseCount:
+          type: integer
+          minimum: 0
+          example: 1350
+        withinLimitCount:
+          type: integer
+          minimum: 0
+          example: 2500
+        limitEventCount:
+          type: integer
+          minimum: 0
+          example: 650
+        pullbackCount:
+          type: integer
+          minimum: 0
+          example: 400
+        overrideCount:
+          type: integer
+          minimum: 0
+          example: 250
+        cancelledCount:
+          type: integer
+          minimum: 0
+          example: 25
+
+    DoseRateChangeAverageMetrics:
+      type: object
+      properties:
+        averageIncreaseAttemptedPullback:
+          $ref: "#/components/schemas/MeasuredValue"
+        averageDecreaseAttemptedPullback:
+          $ref: "#/components/schemas/MeasuredValue"
+        averageIncreaseAttemptedOverride:
+          $ref: "#/components/schemas/MeasuredValue"
+        averageDecreaseAttemptedOverride:
+          $ref: "#/components/schemas/MeasuredValue"
+        averageIncreaseCompletedWithinLimit:
+          $ref: "#/components/schemas/MeasuredValue"
+        averageDecreaseCompletedWithinLimit:
+          $ref: "#/components/schemas/MeasuredValue"
+
+    DoseRateChangeBreakdownItem:
+      type: object
+      required:
+        - id
+        - name
+        - totalDoseRateChanges
+      properties:
+        id:
+          type: string
+          example: "DRUG-HEPARIN"
+        name:
+          type: string
+          example: "Heparin"
+        totalDoseRateChanges:
+          type: integer
+          minimum: 0
+          example: 250
+        increaseCount:
+          type: integer
+          minimum: 0
+          example: 150
+        decreaseCount:
+          type: integer
+          minimum: 0
+          example: 100
+        withinLimitCount:
+          type: integer
+          minimum: 0
+          example: 200
+        limitEventCount:
+          type: integer
+          minimum: 0
+          example: 50
+        pullbackCount:
+          type: integer
+          minimum: 0
+          example: 30
+        overrideCount:
+          type: integer
+          minimum: 0
+          example: 20
+
+    DoseRateChangeTrendPoint:
+      type: object
+      required:
+        - periodStart
+        - periodEnd
+        - totalDoseRateChanges
+      properties:
+        periodStart:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          example: "2026-01-01T23:59:59Z"
+        totalDoseRateChanges:
+          type: integer
+          minimum: 0
+          example: 80
+        increaseCount:
+          type: integer
+          minimum: 0
+          example: 45
+        decreaseCount:
+          type: integer
+          minimum: 0
+          example: 35
+        withinLimitCount:
+          type: integer
+          minimum: 0
+          example: 65
+        limitEventCount:
+          type: integer
+          minimum: 0
+          example: 15
+
+    DoseRateChangeEvent:
+      type: object
+      required:
+        - doseRateChangeEventId
+        - infusionId
+        - occurredAt
+      properties:
+        doseRateChangeEventId:
+          type: string
+          example: "DRC-10001"
+        infusionId:
+          type: string
+          example: "INF-123"
+        deviceId:
+          type: string
+          nullable: true
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        drugLibraryVersionId:
+          type: string
+          nullable: true
+          example: "DLV-1002"
+        careAreaId:
+          type: string
+          nullable: true
+          example: "CA-ICU"
+        careAreaName:
+          type: string
+          nullable: true
+          example: "ICU"
+        drugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        drugName:
+          type: string
+          nullable: true
+          example: "Heparin"
+        direction:
+          $ref: "#/components/schemas/DoseRateChangeDirection"
+        outcome:
+          $ref: "#/components/schemas/DoseRateChangeOutcome"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:35:00Z"
+
+    DoseRateChangeEventDetail:
+      allOf:
+        - $ref: "#/components/schemas/DoseRateChangeEvent"
+        - type: object
+          properties:
+            drugModifier:
+              type: string
+              nullable: true
+              example: "Sodium"
+            concentration:
+              $ref: "#/components/schemas/MeasuredValue"
+            priorDoseRate:
+              $ref: "#/components/schemas/MeasuredValue"
+            attemptedDoseRate:
+              $ref: "#/components/schemas/MeasuredValue"
+            resultingDoseRate:
+              $ref: "#/components/schemas/MeasuredValue"
+            completedDoseRate:
+              $ref: "#/components/schemas/MeasuredValue"
+            changeAmount:
+              $ref: "#/components/schemas/MeasuredValue"
+            changePercent:
+              type: number
+              format: double
+              nullable: true
+              example: 25.0
+            relatedLimitEventId:
+              type: string
+              nullable: true
+              example: "LE-10001"
+            programType:
+              type: string
+              nullable: true
+              example: "PRIMARY"
+            modeType:
+              type: string
+              nullable: true
+              example: "CONTINUOUS"
+            sourceEventReference:
+              $ref: "#/components/schemas/SourceEventReference"
+
+    MeasuredValue:
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+        unit:
+          type: string
+          nullable: true
+          example: "mL/hr"
+
+    SourceEventReference:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+          nullable: true
+          example: "PUMP_EVENT"
+        sourceEventId:
+          type: string
+          nullable: true
+          example: "PUMP-EVT-9001"
+        eventCode:
+          type: string
+          nullable: true
+          example: "VALUE_ENTERED"
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when count is expensive.
+          example: 1250
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "occurredAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    DoseRateChangeDirection:
+      type: string
+      enum:
+        - INCREASE
+        - DECREASE
+        - UNKNOWN
+
+    DoseRateChangeOutcome:
+      type: string
+      enum:
+        - WITHIN_LIMIT
+        - LIMIT_EVENT
+        - PULLBACK
+        - OVERRIDE
+        - CANCELLED
+        - UNKNOWN
+        - NOT_APPLICABLE
+
+    DoseRateChangeGroupBy:
+      type: string
+      enum:
+        - DRUG_LIBRARY_VERSION
+        - CARE_AREA
+        - DRUG
+        - PUMP_TYPE
+        - DEVICE
+        - ENTERPRISE_HIERARCHY
+        - DIRECTION
+        - OUTCOME
+        - PROGRAM_TYPE
+        - MODE_TYPE
+
+    TrendGranularity:
+      type: string
+      enum:
+        - DAILY
+        - WEEKLY
+        - MONTHLY
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ExportFormat:
+      type: string
+      enum:
+        - CSV
+        - XLSX
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_DOSE_RATE_CHANGE_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid dose rate change query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"

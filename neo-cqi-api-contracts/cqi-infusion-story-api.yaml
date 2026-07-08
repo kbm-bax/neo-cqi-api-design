@@ -1,0 +1,1014 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Infusion Story API
+  version: 1.0.0
+  description: |
+    CQI Infusion Story API for Neo CQI.
+
+    This API provides a reconstructed infusion story for a selected infusion,
+    including header details, graph data, delivery status, flow-rate and
+    dose-rate plot data, total-volume plot data, event markers, alert markers,
+    tooltips, and previous/next infusion navigation.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Infusion Story
+  - name: Infusion Story Header
+  - name: Infusion Story Graph
+  - name: Infusion Story Events
+  - name: Infusion Story Markers
+  - name: Infusion Story Navigation
+  - name: Infusion Story Availability
+  - name: Infusion Story Exports
+
+paths:
+
+  /infusion-stories/{infusionId}:
+    get:
+      tags:
+        - Infusion Story
+      operationId: getInfusionStory
+      summary: Get full infusion story
+      description: Returns the complete infusion story aggregate for a selected infusion.
+      parameters:
+        - $ref: "#/components/parameters/InfusionId"
+        - name: includeRawReferences
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Infusion story returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/{infusionId}/header:
+    get:
+      tags:
+        - Infusion Story Header
+      operationId: getInfusionStoryHeader
+      summary: Get infusion story header
+      parameters:
+        - $ref: "#/components/parameters/InfusionId"
+      responses:
+        "200":
+          description: Infusion story header returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryHeaderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/{infusionId}/graph:
+    get:
+      tags:
+        - Infusion Story Graph
+      operationId: getInfusionStoryGraph
+      summary: Get infusion story graph
+      parameters:
+        - $ref: "#/components/parameters/InfusionId"
+        - name: series
+          in: query
+          required: false
+          description: Optional list of graph series to include.
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/GraphSeriesType"
+          style: form
+          explode: false
+      responses:
+        "200":
+          description: Infusion story graph returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryGraphResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/{infusionId}/events:
+    get:
+      tags:
+        - Infusion Story Events
+      operationId: getInfusionStoryEvents
+      summary: Get infusion story event sequence
+      parameters:
+        - $ref: "#/components/parameters/InfusionId"
+        - name: eventCategories
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/InfusionStoryEventCategory"
+          style: form
+          explode: false
+      responses:
+        "200":
+          description: Infusion story events returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryEventListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/{infusionId}/markers:
+    get:
+      tags:
+        - Infusion Story Markers
+      operationId: getInfusionStoryMarkers
+      summary: Get infusion story markers
+      parameters:
+        - $ref: "#/components/parameters/InfusionId"
+        - name: markerTypes
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/InfusionStoryMarkerType"
+          style: form
+          explode: false
+      responses:
+        "200":
+          description: Infusion story markers returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryMarkerListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/{infusionId}/navigation:
+    get:
+      tags:
+        - Infusion Story Navigation
+      operationId: getInfusionStoryNavigation
+      summary: Get previous and next infusion references
+      parameters:
+        - $ref: "#/components/parameters/InfusionId"
+        - name: navigationScope
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/InfusionNavigationScope"
+      responses:
+        "200":
+          description: Infusion story navigation returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryNavigationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/availability-query:
+    post:
+      tags:
+        - Infusion Story Availability
+      operationId: checkInfusionStoryAvailability
+      summary: Check infusion story availability
+      description: Allows source reports to check whether Infusion Story can be opened for one or more infusions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfusionStoryAvailabilityRequest"
+      responses:
+        "200":
+          description: Infusion story availability returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryAvailabilityResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/exports:
+    post:
+      tags:
+        - Infusion Story Exports
+      operationId: createInfusionStoryExport
+      summary: Create infusion story export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfusionStoryExportRequest"
+      responses:
+        "202":
+          description: Export request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryExportAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /infusion-stories/exports/{exportId}:
+    get:
+      tags:
+        - Infusion Story Exports
+      operationId: getInfusionStoryExportStatus
+      summary: Get infusion story export status
+      parameters:
+        - $ref: "#/components/parameters/ExportId"
+      responses:
+        "200":
+          description: Export status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryExportStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    InfusionId:
+      name: infusionId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "INF-123"
+
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "EXP-IS-1001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    InfusionStoryResponse:
+      type: object
+      required:
+        - infusionStory
+        - dataFreshness
+      properties:
+        infusionStory:
+          $ref: "#/components/schemas/InfusionStory"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryHeaderResponse:
+      type: object
+      required:
+        - header
+        - dataFreshness
+      properties:
+        header:
+          $ref: "#/components/schemas/InfusionStoryHeader"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryGraphResponse:
+      type: object
+      required:
+        - graph
+        - dataFreshness
+      properties:
+        graph:
+          $ref: "#/components/schemas/InfusionStoryGraph"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryEventListResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfusionStoryEvent"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryMarkerListResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfusionStoryMarker"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryNavigationResponse:
+      type: object
+      required:
+        - navigation
+        - dataFreshness
+      properties:
+        navigation:
+          $ref: "#/components/schemas/InfusionStoryNavigation"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryAvailabilityRequest:
+      type: object
+      required:
+        - infusionIds
+      properties:
+        infusionIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: string
+          example:
+            - "INF-123"
+            - "INF-124"
+        sourceContext:
+          $ref: "#/components/schemas/InfusionStorySourceContext"
+
+    InfusionStoryAvailabilityResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfusionStoryAvailability"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryExportRequest:
+      type: object
+      required:
+        - infusionId
+        - exportFormat
+      properties:
+        infusionId:
+          type: string
+          example: "INF-123"
+        exportFormat:
+          $ref: "#/components/schemas/ExportFormat"
+        includeGraphData:
+          type: boolean
+          default: true
+        includeEvents:
+          type: boolean
+          default: true
+        includeMarkers:
+          type: boolean
+          default: true
+
+    InfusionStoryExportAcceptedResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-IS-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+
+    InfusionStoryExportStatusResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-IS-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        fileName:
+          type: string
+          nullable: true
+          example: "infusion-story-INF-123.pdf"
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if export is ready.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    InfusionStory:
+      type: object
+      required:
+        - infusionId
+        - header
+        - graph
+      properties:
+        infusionId:
+          type: string
+          example: "INF-123"
+        header:
+          $ref: "#/components/schemas/InfusionStoryHeader"
+        graph:
+          $ref: "#/components/schemas/InfusionStoryGraph"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfusionStoryEvent"
+        markers:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfusionStoryMarker"
+        navigation:
+          $ref: "#/components/schemas/InfusionStoryNavigation"
+
+    InfusionStoryHeader:
+      type: object
+      required:
+        - infusionId
+      properties:
+        infusionId:
+          type: string
+          example: "INF-123"
+        infusionNumber:
+          type: string
+          nullable: true
+          example: "INF-000123"
+        deviceId:
+          type: string
+          nullable: true
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        deviceModel:
+          type: string
+          nullable: true
+          example: "Novum IQ"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        infusionStartDateTime:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T10:00:00Z"
+        infusionEndDateTime:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T12:30:00Z"
+        careAreaId:
+          type: string
+          nullable: true
+          example: "CA-ICU"
+        careAreaName:
+          type: string
+          nullable: true
+          example: "ICU"
+        drugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        drugName:
+          type: string
+          nullable: true
+          example: "Heparin"
+        drugModifier:
+          type: string
+          nullable: true
+          example: "Sodium"
+        drugAlias:
+          type: string
+          nullable: true
+          example: "HEPARIN"
+        concentration:
+          $ref: "#/components/schemas/MeasuredValue"
+        startingDoseRate:
+          $ref: "#/components/schemas/MeasuredValue"
+        startingFlowRate:
+          $ref: "#/components/schemas/MeasuredValue"
+        programType:
+          type: string
+          nullable: true
+          example: "PRIMARY"
+        enterpriseHierarchyNodeId:
+          type: string
+          nullable: true
+          example: "EH-100"
+        enterpriseGroupName:
+          type: string
+          nullable: true
+          example: "ICU East"
+        totalInfusionTimeMinutes:
+          type: number
+          format: double
+          nullable: true
+          example: 150
+        totalVolumeInfused:
+          $ref: "#/components/schemas/MeasuredValue"
+
+    InfusionStoryGraph:
+      type: object
+      properties:
+        deliveryStatusSegments:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryStatusSegment"
+        flowRateSeries:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphPoint"
+        doseRateSeries:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphPoint"
+        totalVolumeSeries:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphPoint"
+        markers:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfusionStoryMarker"
+
+    DeliveryStatusSegment:
+      type: object
+      required:
+        - status
+        - startTime
+      properties:
+        status:
+          $ref: "#/components/schemas/DeliveryStatus"
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+
+    GraphPoint:
+      type: object
+      required:
+        - timestamp
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:05:00Z"
+        value:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+        unit:
+          type: string
+          nullable: true
+          example: "mL/hr"
+        tooltip:
+          $ref: "#/components/schemas/Tooltip"
+
+    InfusionStoryEvent:
+      type: object
+      required:
+        - eventId
+        - occurredAt
+      properties:
+        eventId:
+          type: string
+          example: "ISE-10001"
+        eventType:
+          type: string
+          nullable: true
+          example: "PUMP_RUN"
+        eventCategory:
+          $ref: "#/components/schemas/InfusionStoryEventCategory"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:05:00Z"
+        label:
+          type: string
+          nullable: true
+          example: "Pump Run"
+        flowRate:
+          $ref: "#/components/schemas/MeasuredValue"
+        doseRate:
+          $ref: "#/components/schemas/MeasuredValue"
+        totalVolume:
+          $ref: "#/components/schemas/MeasuredValue"
+        vtbi:
+          $ref: "#/components/schemas/MeasuredValue"
+        deliveryStatus:
+          $ref: "#/components/schemas/DeliveryStatus"
+        sourceEventReference:
+          $ref: "#/components/schemas/SourceEventReference"
+        tooltip:
+          $ref: "#/components/schemas/Tooltip"
+
+    InfusionStoryMarker:
+      type: object
+      required:
+        - markerId
+        - markerType
+        - occurredAt
+      properties:
+        markerId:
+          type: string
+          example: "MKR-10001"
+        markerType:
+          $ref: "#/components/schemas/InfusionStoryMarkerType"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:35:00Z"
+        label:
+          type: string
+          nullable: true
+          example: "Soft Limit"
+        severity:
+          $ref: "#/components/schemas/MarkerSeverity"
+        relatedEventId:
+          type: string
+          nullable: true
+          example: "LE-10001"
+        relatedReportContext:
+          $ref: "#/components/schemas/RelatedReportContext"
+        tooltip:
+          $ref: "#/components/schemas/Tooltip"
+
+    InfusionStoryNavigation:
+      type: object
+      properties:
+        previousInfusionId:
+          type: string
+          nullable: true
+          example: "INF-122"
+        nextInfusionId:
+          type: string
+          nullable: true
+          example: "INF-124"
+        previousDrugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        nextDrugId:
+          type: string
+          nullable: true
+          example: "DRUG-DOPAMINE"
+
+    InfusionStoryAvailability:
+      type: object
+      required:
+        - infusionId
+        - available
+      properties:
+        infusionId:
+          type: string
+          example: "INF-123"
+        available:
+          type: boolean
+          example: true
+        reason:
+          type: string
+          nullable: true
+          example: "Infusion story is available."
+        href:
+          type: string
+          nullable: true
+          example: "/api/cqi/v1/infusion-stories/INF-123"
+
+    Tooltip:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/TooltipField"
+
+    TooltipField:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Dose Rate"
+        value:
+          type: string
+          example: "12.5 mL/hr"
+
+    MeasuredValue:
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+        unit:
+          type: string
+          nullable: true
+          example: "mL/hr"
+
+    SourceEventReference:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+          nullable: true
+          example: "PUMP_EVENT"
+        sourceEventId:
+          type: string
+          nullable: true
+          example: "PUMP-EVT-9001"
+        eventCode:
+          type: string
+          nullable: true
+          example: "PUMP_RUN"
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+
+    GraphSeriesType:
+      type: string
+      enum:
+        - DELIVERY_STATUS
+        - FLOW_RATE
+        - DOSE_RATE
+        - TOTAL_VOLUME
+        - MARKERS
+
+    InfusionStoryEventCategory:
+      type: string
+      enum:
+        - PROGRAMMING
+        - DELIVERY_STATUS
+        - FLOW_RATE
+        - DOSE_RATE
+        - VOLUME
+        - LIMIT
+        - GUARDIAN
+        - ALARM
+        - DEVICE_STATUS
+        - USER_ACTION
+        - UNKNOWN
+
+    InfusionStoryMarkerType:
+      type: string
+      enum:
+        - LIMIT
+        - GUARDIAN
+        - ALARM
+        - DEVICE_STATUS
+        - USER_ACTION
+        - UNKNOWN
+
+    DeliveryStatus:
+      type: string
+      enum:
+        - RUNNING
+        - PAUSED
+        - STOPPED
+        - KVO
+        - COMPLETE
+        - UNKNOWN
+
+    MarkerSeverity:
+      type: string
+      enum:
+        - INFO
+        - LOW
+        - MEDIUM
+        - HIGH
+        - UNKNOWN
+
+    RelatedReportContext:
+      type: string
+      enum:
+        - COMPLIANCE
+        - LIMITS
+        - DOSE_RATE_CHANGE
+        - DEVICE_USAGE
+        - GUARDIAN
+        - NONE
+
+    InfusionNavigationScope:
+      type: string
+      enum:
+        - DEVICE
+        - DEVICE_AND_DRUG_LIBRARY
+        - DEVICE_AND_DRUG
+        - REPORT_CONTEXT
+
+    InfusionStorySourceContext:
+      type: string
+      enum:
+        - COMPLIANCE
+        - LIMITS
+        - DOSE_RATE_CHANGE
+        - DEVICE_USAGE
+        - GUARDIAN
+        - DIRECT
+
+    ExportFormat:
+      type: string
+      enum:
+        - JSON
+        - PDF
+        - CSV
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_INFUSION_STORY_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid infusion story request."
+        target:
+          type: string
+          nullable: true
+          example: "infusionId"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INFUSION_STORY_NOT_AVAILABLE"
+        message:
+          type: string
+          example: "Infusion story is not available for the requested infusion."
+        target:
+          type: string
+          nullable: true
+          example: "infusionId"

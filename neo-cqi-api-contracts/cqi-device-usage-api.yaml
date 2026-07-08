@@ -1,0 +1,1158 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Device Usage API
+  version: 1.0.0
+  description: |
+    CQI Device Usage API for Neo CQI.
+
+    This API provides device usage summaries, utilization, activity,
+    usage trends, device alarm/error details, device-level reporting views,
+    and export support.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Device Usage Summary
+  - name: Device Utilization
+  - name: Device Activity
+  - name: Device Usage Trends
+  - name: Device Usage Errors
+  - name: Device Usage Device View
+  - name: Device Usage Exports
+
+paths:
+
+  /device-usage/summary-query:
+    post:
+      tags:
+        - Device Usage Summary
+      operationId: getDeviceUsageSummary
+      summary: Get device usage summary
+      description: Returns device usage summary rows for the selected filters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUsageSummaryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryScope:
+                      mode: "SELECTED"
+                      drugLibraryVersionIds:
+                        - "DLV-1002"
+                    pumpTypes:
+                      - "LVP"
+                    enterpriseHierarchyNodeIds:
+                      - "EH-100"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "deviceSerialNumber"
+                    direction: "ASC"
+      responses:
+        "200":
+          description: Device usage summary returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageSummaryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/utilization-query:
+    post:
+      tags:
+        - Device Utilization
+      operationId: getDeviceUtilization
+      summary: Get device utilization
+      description: Returns utilization metrics for devices matching the selected filters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUtilizationRequest"
+      responses:
+        "200":
+          description: Device utilization returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUtilizationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/activity-query:
+    post:
+      tags:
+        - Device Activity
+      operationId: getDeviceActivity
+      summary: Get device activity
+      description: Returns activity metrics for devices matching the selected filters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceActivityRequest"
+      responses:
+        "200":
+          description: Device activity returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceActivityResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/trends-query:
+    post:
+      tags:
+        - Device Usage Trends
+      operationId: getDeviceUsageTrends
+      summary: Get device usage trends
+      description: Returns usage trend metrics over time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUsageTrendRequest"
+            examples:
+              daily:
+                value:
+                  granularity: "DAILY"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    pumpTypes:
+                      - "LVP"
+      responses:
+        "200":
+          description: Device usage trends returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageTrendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/errors-query:
+    post:
+      tags:
+        - Device Usage Errors
+      operationId: searchDeviceUsageErrors
+      summary: Search device usage error events
+      description: Returns pump/device error or alarm events for Device Usage reporting.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUsageErrorQueryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    deviceSerialNumbers:
+                      - "SN001"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "occurredAt"
+                    direction: "DESC"
+      responses:
+        "200":
+          description: Device usage error events returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageErrorListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/errors/{deviceUsageErrorEventId}:
+    get:
+      tags:
+        - Device Usage Errors
+      operationId: getDeviceUsageErrorById
+      summary: Get device usage error event details
+      parameters:
+        - $ref: "#/components/parameters/DeviceUsageErrorEventId"
+      responses:
+        "200":
+          description: Device usage error event detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageErrorDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/devices/{deviceId}:
+    get:
+      tags:
+        - Device Usage Device View
+      operationId: getDeviceUsageProfile
+      summary: Get device usage profile
+      description: Returns reporting-oriented usage profile for a selected device.
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Device usage profile returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageProfileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/exports:
+    post:
+      tags:
+        - Device Usage Exports
+      operationId: createDeviceUsageExport
+      summary: Create device usage export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUsageExportRequest"
+      responses:
+        "202":
+          description: Export request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageExportAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-usage/exports/{exportId}:
+    get:
+      tags:
+        - Device Usage Exports
+      operationId: getDeviceUsageExportStatus
+      summary: Get device usage export status
+      parameters:
+        - $ref: "#/components/parameters/ExportId"
+      responses:
+        "200":
+          description: Export status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceUsageExportStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DeviceUsageErrorEventId:
+      name: deviceUsageErrorEventId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "DUE-10001"
+
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "DEV-100"
+
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "EXP-DUR-1001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    DeviceUsageSummaryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceUsageFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DeviceUtilizationRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceUsageFilter"
+        groupBy:
+          $ref: "#/components/schemas/DeviceUsageGroupBy"
+
+    DeviceActivityRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceUsageFilter"
+        groupBy:
+          $ref: "#/components/schemas/DeviceUsageGroupBy"
+
+    DeviceUsageTrendRequest:
+      type: object
+      required:
+        - filters
+        - granularity
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceUsageFilter"
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+
+    DeviceUsageErrorQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceUsageFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DeviceUsageExportRequest:
+      type: object
+      required:
+        - filters
+        - exportFormat
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceUsageFilter"
+        exportFormat:
+          $ref: "#/components/schemas/ExportFormat"
+        columns:
+          type: array
+          items:
+            type: string
+          example:
+            - "deviceSerialNumber"
+            - "connectionPercentage"
+            - "deviceStatus"
+            - "averageUtilization"
+            - "currentEnterpriseGroupName"
+            - "infusionCount"
+            - "errorCount"
+            - "lastUpdatedAt"
+
+    DeviceUsageFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+        drugLibraryScope:
+          $ref: "#/components/schemas/DrugLibraryScope"
+
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+        deviceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DEV-100"
+
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+          example:
+            - "SN001"
+
+        pumpTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "LVP"
+            - "SYR"
+
+        deviceStatuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceStatus"
+
+        enterpriseHierarchyNodeIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EH-100"
+
+        errorNames:
+          type: array
+          items:
+            type: string
+          example:
+            - "Container Near Empty"
+
+        includeInactiveDevices:
+          type: boolean
+          default: false
+
+    DrugLibraryScope:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - SELECTED
+            - ALL_CONFIGURED
+          example: "SELECTED"
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+    DateRange:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          example: "2026-01-31T23:59:59Z"
+
+    DeviceUsageSummaryResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceUsageSummary"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceUtilizationResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceUtilization"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceActivityResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceActivity"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceUsageTrendResponse:
+      type: object
+      required:
+        - granularity
+        - points
+        - dataFreshness
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceUsageTrendPoint"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceUsageErrorListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceUsageErrorEvent"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceUsageErrorDetailResponse:
+      type: object
+      required:
+        - errorEvent
+        - dataFreshness
+      properties:
+        errorEvent:
+          $ref: "#/components/schemas/DeviceUsageErrorEventDetail"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceUsageProfileResponse:
+      type: object
+      required:
+        - device
+        - dataFreshness
+      properties:
+        device:
+          $ref: "#/components/schemas/DeviceUsageProfile"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceUsageExportAcceptedResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-DUR-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+
+    DeviceUsageExportStatusResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-DUR-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        fileName:
+          type: string
+          nullable: true
+          example: "device-usage-export-202601.csv"
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if export is ready.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    DeviceUsageSummary:
+      type: object
+      required:
+        - deviceId
+        - deviceSerialNumber
+      properties:
+        deviceId:
+          type: string
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        deviceModel:
+          type: string
+          nullable: true
+          example: "Novum IQ"
+        deviceStatus:
+          $ref: "#/components/schemas/DeviceStatus"
+        connectionPercentage:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 100
+          example: 95.5
+        averageUtilization:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 100
+          example: 62.3
+        currentEnterpriseHierarchyNodeId:
+          type: string
+          nullable: true
+          example: "EH-100"
+        currentEnterpriseGroupName:
+          type: string
+          nullable: true
+          example: "ICU East"
+        infusionCount:
+          type: integer
+          minimum: 0
+          example: 120
+        errorCount:
+          type: integer
+          minimum: 0
+          example: 5
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-08T10:30:00Z"
+
+    DeviceUtilization:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "DEV-100"
+        name:
+          type: string
+          example: "SN001"
+        utilizationPercentage:
+          type: number
+          format: double
+          nullable: true
+          example: 62.3
+        connectionPercentage:
+          type: number
+          format: double
+          nullable: true
+          example: 95.5
+        connectedDurationMinutes:
+          type: integer
+          nullable: true
+          example: 12000
+        activeInfusionDurationMinutes:
+          type: integer
+          nullable: true
+          example: 7200
+        idleDurationMinutes:
+          type: integer
+          nullable: true
+          example: 4800
+
+    DeviceActivity:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "DEV-100"
+        name:
+          type: string
+          example: "SN001"
+        activityCount:
+          type: integer
+          minimum: 0
+          example: 340
+        infusionCount:
+          type: integer
+          minimum: 0
+          example: 120
+        connectCount:
+          type: integer
+          minimum: 0
+          example: 10
+        disconnectCount:
+          type: integer
+          minimum: 0
+          example: 8
+        errorCount:
+          type: integer
+          minimum: 0
+          example: 5
+        alarmCount:
+          type: integer
+          minimum: 0
+          example: 12
+
+    DeviceUsageTrendPoint:
+      type: object
+      required:
+        - periodStart
+        - periodEnd
+      properties:
+        periodStart:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          example: "2026-01-01T23:59:59Z"
+        deviceCount:
+          type: integer
+          minimum: 0
+          example: 125
+        averageConnectionPercentage:
+          type: number
+          format: double
+          nullable: true
+          example: 94.5
+        averageUtilization:
+          type: number
+          format: double
+          nullable: true
+          example: 62.3
+        infusionCount:
+          type: integer
+          minimum: 0
+          example: 480
+        errorCount:
+          type: integer
+          minimum: 0
+          example: 18
+        alarmCount:
+          type: integer
+          minimum: 0
+          example: 30
+
+    DeviceUsageErrorEvent:
+      type: object
+      required:
+        - deviceUsageErrorEventId
+        - deviceId
+        - occurredAt
+      properties:
+        deviceUsageErrorEventId:
+          type: string
+          example: "DUE-10001"
+        deviceId:
+          type: string
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        infusionId:
+          type: string
+          nullable: true
+          example: "INF-123"
+        errorName:
+          type: string
+          nullable: true
+          example: "Container Near Empty"
+        alarmName:
+          type: string
+          nullable: true
+          example: "Bag Near Empty"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:35:00Z"
+
+    DeviceUsageErrorEventDetail:
+      allOf:
+        - $ref: "#/components/schemas/DeviceUsageErrorEvent"
+        - type: object
+          properties:
+            hospitalDeviceId:
+              type: string
+              nullable: true
+              example: "HOSP-DEV-001"
+            emrDeviceId:
+              type: string
+              nullable: true
+              example: "EMR-DEV-001"
+            location:
+              type: string
+              nullable: true
+              example: "ICU East"
+            accessPoint:
+              type: string
+              nullable: true
+              example: "AP-100"
+            deviceModel:
+              type: string
+              nullable: true
+              example: "Novum IQ"
+            enterpriseHierarchyNodeId:
+              type: string
+              nullable: true
+              example: "EH-100"
+            enterpriseGroupName:
+              type: string
+              nullable: true
+              example: "ICU East"
+            drugName:
+              type: string
+              nullable: true
+              example: "Heparin"
+            drugModifier:
+              type: string
+              nullable: true
+              example: "Sodium"
+            concentration:
+              $ref: "#/components/schemas/MeasuredValue"
+            doseRate:
+              $ref: "#/components/schemas/MeasuredValue"
+            sourceEventReference:
+              $ref: "#/components/schemas/SourceEventReference"
+            infusionStoryReference:
+              $ref: "#/components/schemas/InfusionStoryReference"
+
+    DeviceUsageProfile:
+      allOf:
+        - $ref: "#/components/schemas/DeviceUsageSummary"
+        - type: object
+          properties:
+            utilization:
+              $ref: "#/components/schemas/DeviceUtilization"
+            activity:
+              $ref: "#/components/schemas/DeviceActivity"
+
+    MeasuredValue:
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+        unit:
+          type: string
+          nullable: true
+          example: "mL/hr"
+
+    SourceEventReference:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+          nullable: true
+          example: "PUMP_EVENT"
+        sourceEventId:
+          type: string
+          nullable: true
+          example: "PUMP-EVT-9001"
+        eventCode:
+          type: string
+          nullable: true
+          example: "DEVICE_ERROR"
+
+    InfusionStoryReference:
+      type: object
+      properties:
+        infusionId:
+          type: string
+          nullable: true
+          example: "INF-123"
+        href:
+          type: string
+          nullable: true
+          example: "/api/cqi/v1/infusions/INF-123/story"
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when count is expensive.
+          example: 1250
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "deviceSerialNumber"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    DeviceStatus:
+      type: string
+      enum:
+        - CONNECTED
+        - DISCONNECTED
+        - ACTIVE
+        - IDLE
+        - UNKNOWN
+
+    DeviceUsageGroupBy:
+      type: string
+      enum:
+        - DEVICE
+        - PUMP_TYPE
+        - DEVICE_STATUS
+        - ENTERPRISE_HIERARCHY
+        - DRUG_LIBRARY_VERSION
+
+    TrendGranularity:
+      type: string
+      enum:
+        - DAILY
+        - WEEKLY
+        - MONTHLY
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ExportFormat:
+      type: string
+      enum:
+        - CSV
+        - XLSX
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_DEVICE_USAGE_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid device usage query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"

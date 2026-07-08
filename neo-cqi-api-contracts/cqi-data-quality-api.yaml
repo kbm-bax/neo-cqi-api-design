@@ -1,0 +1,1525 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Data Quality API
+  version: 1.0.0
+  description: |
+    CQI Data Quality API for Neo CQI.
+
+    This API provides CQI-facing visibility into data quality issues,
+    invalid messages, duplicate records, orphaned records, pipeline status,
+    data freshness, reconciliation summaries, and quality gate results.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, object-store paths, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Data Quality Summary
+  - name: Data Quality Issues
+  - name: Invalid Messages
+  - name: Duplicate Records
+  - name: Orphaned Records
+  - name: Pipeline Status
+  - name: Data Freshness
+  - name: Reconciliation
+  - name: Quality Gates
+
+paths:
+
+  /data-quality/summary:
+    get:
+      tags:
+        - Data Quality Summary
+      operationId: getDataQualitySummary
+      summary: Get CQI data quality summary
+      description: Returns overall data quality health across CQI processing and reporting projections.
+      responses:
+        "200":
+          description: Data quality summary returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataQualitySummaryResponse"
+              examples:
+                success:
+                  value:
+                    summary:
+                      overallStatus: "DEGRADED"
+                      openIssueCount: 12
+                      criticalIssueCount: 1
+                      invalidMessageCount: 25
+                      duplicateRecordCount: 8
+                      orphanedRecordCount: 3
+                      failedQualityGateCount: 2
+                      staleProjectionCount: 1
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/issues-query:
+    post:
+      tags:
+        - Data Quality Issues
+      operationId: searchDataQualityIssues
+      summary: Search data quality issues
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataQualityIssueQueryRequest"
+            examples:
+              openHighSeverity:
+                value:
+                  filters:
+                    statuses:
+                      - "OPEN"
+                    severities:
+                      - "HIGH"
+                      - "CRITICAL"
+                    issueTypes:
+                      - "DUPLICATE_RECORD"
+                      - "SCHEMA_VALIDATION_FAILED"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "lastSeenAt"
+                    direction: "DESC"
+      responses:
+        "200":
+          description: Data quality issues returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataQualityIssueListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/issues/{issueId}:
+    get:
+      tags:
+        - Data Quality Issues
+      operationId: getDataQualityIssueById
+      summary: Get data quality issue by ID
+      parameters:
+        - $ref: "#/components/parameters/IssueId"
+      responses:
+        "200":
+          description: Data quality issue returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataQualityIssueResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    patch:
+      tags:
+        - Data Quality Issues
+      operationId: updateDataQualityIssue
+      summary: Update data quality issue status
+      description: Updates issue workflow metadata such as status, owner, or notes. This does not mutate source CQI report data.
+      parameters:
+        - $ref: "#/components/parameters/IssueId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDataQualityIssueRequest"
+      responses:
+        "200":
+          description: Data quality issue updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataQualityIssueResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/invalid-messages-query:
+    post:
+      tags:
+        - Invalid Messages
+      operationId: searchInvalidMessages
+      summary: Search invalid or rejected messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvalidMessageQueryRequest"
+      responses:
+        "200":
+          description: Invalid messages returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidMessageListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/invalid-messages/{messageId}:
+    get:
+      tags:
+        - Invalid Messages
+      operationId: getInvalidMessageById
+      summary: Get invalid message by ID
+      parameters:
+        - $ref: "#/components/parameters/MessageId"
+      responses:
+        "200":
+          description: Invalid message returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/duplicates-query:
+    post:
+      tags:
+        - Duplicate Records
+      operationId: searchDuplicateRecords
+      summary: Search duplicate record groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateRecordQueryRequest"
+      responses:
+        "200":
+          description: Duplicate records returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateRecordListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/orphans-query:
+    post:
+      tags:
+        - Orphaned Records
+      operationId: searchOrphanedRecords
+      summary: Search orphaned records
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrphanedRecordQueryRequest"
+      responses:
+        "200":
+          description: Orphaned records returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrphanedRecordListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/pipeline-status:
+    get:
+      tags:
+        - Pipeline Status
+      operationId: getPipelineStatuses
+      summary: Get pipeline status overview
+      parameters:
+        - name: pipelineGroup
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PipelineGroup"
+      responses:
+        "200":
+          description: Pipeline statuses returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineStatusListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/pipeline-status/{pipelineName}:
+    get:
+      tags:
+        - Pipeline Status
+      operationId: getPipelineStatusByName
+      summary: Get status for a pipeline
+      parameters:
+        - $ref: "#/components/parameters/PipelineName"
+      responses:
+        "200":
+          description: Pipeline status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/freshness:
+    get:
+      tags:
+        - Data Freshness
+      operationId: getDataFreshnessOverview
+      summary: Get data freshness across CQI reports
+      responses:
+        "200":
+          description: Data freshness overview returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataFreshnessStatusListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/freshness/{reportType}:
+    get:
+      tags:
+        - Data Freshness
+      operationId: getDataFreshnessByReportType
+      summary: Get data freshness for a report type
+      parameters:
+        - $ref: "#/components/parameters/ReportType"
+      responses:
+        "200":
+          description: Report data freshness returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataFreshnessStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/reconciliation-query:
+    post:
+      tags:
+        - Reconciliation
+      operationId: searchReconciliationSummaries
+      summary: Search reconciliation summaries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReconciliationQueryRequest"
+      responses:
+        "200":
+          description: Reconciliation summaries returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationSummaryListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/reconciliations/{reconciliationId}:
+    get:
+      tags:
+        - Reconciliation
+      operationId: getReconciliationById
+      summary: Get reconciliation detail
+      parameters:
+        - $ref: "#/components/parameters/ReconciliationId"
+      responses:
+        "200":
+          description: Reconciliation detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/quality-gates/evaluate:
+    post:
+      tags:
+        - Quality Gates
+      operationId: evaluateQualityGate
+      summary: Evaluate a quality gate
+      description: Evaluates a named quality gate and returns the result.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateQualityGateRequest"
+      responses:
+        "200":
+          description: Quality gate evaluated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityGateResultResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /data-quality/quality-gates/{qualityGateId}:
+    get:
+      tags:
+        - Quality Gates
+      operationId: getQualityGateResult
+      summary: Get quality gate result
+      parameters:
+        - $ref: "#/components/parameters/QualityGateId"
+      responses:
+        "200":
+          description: Quality gate result returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityGateResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IssueId:
+      name: issueId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "DQ-10001"
+
+    MessageId:
+      name: messageId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "MSG-10001"
+
+    PipelineName:
+      name: pipelineName
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "infusion-story-projection"
+
+    ReportType:
+      name: reportType
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/ReportType"
+
+    ReconciliationId:
+      name: reconciliationId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "REC-10001"
+
+    QualityGateId:
+      name: qualityGateId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "QG-10001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    DataQualitySummaryResponse:
+      type: object
+      required:
+        - summary
+        - dataFreshness
+      properties:
+        summary:
+          $ref: "#/components/schemas/DataQualitySummary"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DataQualitySummary:
+      type: object
+      properties:
+        overallStatus:
+          $ref: "#/components/schemas/DataQualityOverallStatus"
+        openIssueCount:
+          type: integer
+          minimum: 0
+        criticalIssueCount:
+          type: integer
+          minimum: 0
+        invalidMessageCount:
+          type: integer
+          minimum: 0
+        duplicateRecordCount:
+          type: integer
+          minimum: 0
+        orphanedRecordCount:
+          type: integer
+          minimum: 0
+        failedQualityGateCount:
+          type: integer
+          minimum: 0
+        staleProjectionCount:
+          type: integer
+          minimum: 0
+
+    DataQualityIssueQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/DataQualityIssueFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DataQualityIssueFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+        issueTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DataQualityIssueType"
+        severities:
+          type: array
+          items:
+            $ref: "#/components/schemas/DataQualitySeverity"
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/DataQualityIssueStatus"
+        sourceContexts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceContext"
+        affectedEntityTypes:
+          type: array
+          items:
+            type: string
+        reportTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportType"
+
+    DataQualityIssueListResponse:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DataQualityIssue"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    DataQualityIssueResponse:
+      type: object
+      required:
+        - issue
+      properties:
+        issue:
+          $ref: "#/components/schemas/DataQualityIssue"
+
+    UpdateDataQualityIssueRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/DataQualityIssueStatus"
+        assignedTo:
+          type: string
+          nullable: true
+          example: "user@example.com"
+        notes:
+          type: string
+          nullable: true
+          maxLength: 4000
+
+    DataQualityIssue:
+      type: object
+      required:
+        - issueId
+        - issueType
+        - severity
+        - status
+      properties:
+        issueId:
+          type: string
+          example: "DQ-10001"
+        issueType:
+          $ref: "#/components/schemas/DataQualityIssueType"
+        severity:
+          $ref: "#/components/schemas/DataQualitySeverity"
+        status:
+          $ref: "#/components/schemas/DataQualityIssueStatus"
+        sourceContext:
+          $ref: "#/components/schemas/SourceContext"
+        affectedEntityType:
+          type: string
+          nullable: true
+          example: "INFUSION"
+        affectedEntityId:
+          type: string
+          nullable: true
+          example: "INF-123"
+        detectionTime:
+          type: string
+          format: date-time
+          nullable: true
+        firstSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        recommendedAction:
+          type: string
+          nullable: true
+        relatedPipelineRunId:
+          type: string
+          nullable: true
+        relatedMessageId:
+          type: string
+          nullable: true
+        relatedReportType:
+          $ref: "#/components/schemas/ReportType"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceItem"
+
+    InvalidMessageQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/InvalidMessageFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    InvalidMessageFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+        sourceSystems:
+          type: array
+          items:
+            type: string
+        messageTypes:
+          type: array
+          items:
+            type: string
+        rejectionReasons:
+          type: array
+          items:
+            type: string
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+
+    InvalidMessageListResponse:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvalidMessage"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    InvalidMessageResponse:
+      type: object
+      required:
+        - invalidMessage
+      properties:
+        invalidMessage:
+          $ref: "#/components/schemas/InvalidMessage"
+
+    InvalidMessage:
+      type: object
+      required:
+        - messageId
+        - receivedAt
+      properties:
+        messageId:
+          type: string
+          example: "MSG-10001"
+        sourceSystem:
+          type: string
+          nullable: true
+          example: "PUMP_EVENT"
+        receivedAt:
+          type: string
+          format: date-time
+        rejectedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+          example: "MANDATORY_FIELD_MISSING"
+        messageType:
+          type: string
+          nullable: true
+        pumpType:
+          type: string
+          nullable: true
+        deviceSerialNumber:
+          type: string
+          nullable: true
+        correlationId:
+          type: string
+          nullable: true
+        dlqReference:
+          type: string
+          nullable: true
+          description: Logical DLQ reference, not a physical path.
+        validationErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationError"
+
+    DuplicateRecordQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/DuplicateRecordFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DuplicateRecordFilter:
+      type: object
+      properties:
+        entityTypes:
+          type: array
+          items:
+            type: string
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResolutionStatus"
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+    DuplicateRecordListResponse:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DuplicateRecord"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    DuplicateRecord:
+      type: object
+      properties:
+        duplicateGroupId:
+          type: string
+          example: "DUP-10001"
+        entityType:
+          type: string
+          example: "INFUSION"
+        compositeKey:
+          type: string
+          nullable: true
+          example: "INF-123|DEV-100|2026-01-02T10:35:00Z"
+        recordIds:
+          type: array
+          items:
+            type: string
+        firstSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        duplicateCount:
+          type: integer
+          minimum: 0
+        resolutionStatus:
+          $ref: "#/components/schemas/ResolutionStatus"
+
+    OrphanedRecordQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/OrphanedRecordFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    OrphanedRecordFilter:
+      type: object
+      properties:
+        childEntityTypes:
+          type: array
+          items:
+            type: string
+        missingParentEntityTypes:
+          type: array
+          items:
+            type: string
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResolutionStatus"
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+    OrphanedRecordListResponse:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrphanedRecord"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    OrphanedRecord:
+      type: object
+      properties:
+        orphanId:
+          type: string
+          example: "ORPH-10001"
+        childEntityType:
+          type: string
+          example: "INFUSION_EVENT"
+        childEntityId:
+          type: string
+          example: "IE-10001"
+        missingParentEntityType:
+          type: string
+          example: "INFUSION"
+        missingParentKey:
+          type: string
+          nullable: true
+          example: "INF-123"
+        detectedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ResolutionStatus"
+
+    PipelineStatusListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PipelineProcessingStatus"
+
+    PipelineStatusResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/PipelineProcessingStatus"
+
+    PipelineProcessingStatus:
+      type: object
+      required:
+        - pipelineName
+        - status
+      properties:
+        pipelineName:
+          type: string
+          example: "infusion-story-projection"
+        pipelineGroup:
+          $ref: "#/components/schemas/PipelineGroup"
+        pipelineRunId:
+          type: string
+          nullable: true
+          example: "RUN-10001"
+        status:
+          $ref: "#/components/schemas/PipelineRunStatus"
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSuccessfulRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        retryCount:
+          type: integer
+          minimum: 0
+          example: 1
+        processedCount:
+          type: integer
+          minimum: 0
+          example: 10000
+        rejectedCount:
+          type: integer
+          minimum: 0
+          example: 25
+        duplicateCount:
+          type: integer
+          minimum: 0
+          example: 8
+        failedCount:
+          type: integer
+          minimum: 0
+          example: 1
+        currentWatermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+        qualityGateStatus:
+          $ref: "#/components/schemas/QualityGateStatus"
+
+    DataFreshnessStatusListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DataFreshnessStatus"
+
+    DataFreshnessStatusResponse:
+      type: object
+      required:
+        - freshness
+      properties:
+        freshness:
+          $ref: "#/components/schemas/DataFreshnessStatus"
+
+    DataFreshnessStatus:
+      type: object
+      required:
+        - reportType
+        - status
+      properties:
+        reportType:
+          $ref: "#/components/schemas/ReportType"
+        projectionName:
+          type: string
+          nullable: true
+          example: "compliance-summary"
+        asOf:
+          type: string
+          format: date-time
+          nullable: true
+        sourceWatermark:
+          type: string
+          nullable: true
+        projectionWatermark:
+          type: string
+          nullable: true
+        lagSeconds:
+          type: integer
+          nullable: true
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/DataFreshnessState"
+        lastSuccessfulRefreshAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ReconciliationQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/ReconciliationFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    ReconciliationFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+        sourceContexts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceContext"
+        targetContexts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceContext"
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReconciliationStatus"
+
+    ReconciliationSummaryListResponse:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReconciliationSummary"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    ReconciliationSummaryResponse:
+      type: object
+      required:
+        - reconciliation
+      properties:
+        reconciliation:
+          $ref: "#/components/schemas/ReconciliationSummary"
+
+    ReconciliationSummary:
+      type: object
+      properties:
+        reconciliationId:
+          type: string
+          example: "REC-10001"
+        sourceContext:
+          $ref: "#/components/schemas/SourceContext"
+        targetContext:
+          $ref: "#/components/schemas/SourceContext"
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+        sourceCount:
+          type: integer
+          minimum: 0
+        targetCount:
+          type: integer
+          minimum: 0
+        matchedCount:
+          type: integer
+          minimum: 0
+        missingCount:
+          type: integer
+          minimum: 0
+        extraCount:
+          type: integer
+          minimum: 0
+        duplicateCount:
+          type: integer
+          minimum: 0
+        reconciliationStatus:
+          $ref: "#/components/schemas/ReconciliationStatus"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    EvaluateQualityGateRequest:
+      type: object
+      required:
+        - gateName
+      properties:
+        gateName:
+          type: string
+          example: "Compliance Projection Completeness"
+        evaluatedDataset:
+          type: string
+          nullable: true
+          example: "COMPLIANCE"
+        parameters:
+          type: object
+          additionalProperties: true
+
+    QualityGateResultResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          $ref: "#/components/schemas/QualityGateResult"
+
+    QualityGateResult:
+      type: object
+      properties:
+        qualityGateId:
+          type: string
+          example: "QG-10001"
+        gateName:
+          type: string
+          example: "Compliance Projection Completeness"
+        status:
+          $ref: "#/components/schemas/QualityGateStatus"
+        evaluatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        evaluatedDataset:
+          type: string
+          nullable: true
+          example: "COMPLIANCE"
+        blocking:
+          type: boolean
+          example: true
+        ruleResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/QualityGateRuleResult"
+
+    QualityGateRuleResult:
+      type: object
+      properties:
+        ruleName:
+          type: string
+          example: "No duplicate infusion IDs"
+        status:
+          $ref: "#/components/schemas/QualityGateStatus"
+        message:
+          type: string
+          nullable: true
+        observedValue:
+          type: string
+          nullable: true
+        expectedValue:
+          type: string
+          nullable: true
+
+    DateRange:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+          nullable: true
+        to:
+          type: string
+          format: date-time
+          nullable: true
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        watermark:
+          type: string
+          nullable: true
+
+    EvidenceItem:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "validationError"
+        value:
+          type: string
+          example: "Missing infusionId"
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+          nullable: true
+          example: "infusionId"
+        code:
+          type: string
+          example: "REQUIRED_FIELD_MISSING"
+        message:
+          type: string
+          example: "infusionId is required."
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "lastSeenAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    DataQualityOverallStatus:
+      type: string
+      enum:
+        - HEALTHY
+        - DEGRADED
+        - UNHEALTHY
+        - UNKNOWN
+
+    DataQualityIssueType:
+      type: string
+      enum:
+        - INVALID_MESSAGE
+        - UNSUPPORTED_MESSAGE
+        - DUPLICATE_RECORD
+        - ORPHANED_RECORD
+        - SCHEMA_VALIDATION_FAILED
+        - SCHEMA_DRIFT
+        - PIPELINE_FAILED
+        - STALE_PROJECTION
+        - RECONCILIATION_MISMATCH
+        - QUALITY_GATE_FAILED
+        - DATA_CORRUPTION_SUSPECTED
+        - UNKNOWN
+
+    DataQualitySeverity:
+      type: string
+      enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+        - CRITICAL
+        - UNKNOWN
+
+    DataQualityIssueStatus:
+      type: string
+      enum:
+        - OPEN
+        - INVESTIGATING
+        - MITIGATED
+        - RESOLVED
+        - IGNORED
+
+    SourceContext:
+      type: string
+      enum:
+        - INGESTION
+        - REFERENCE_DATA
+        - INFUSION_PROCESSING
+        - COMPLIANCE
+        - LIMITS
+        - DOSE_RATE_CHANGE
+        - DEVICE_USAGE
+        - INFUSION_STORY
+        - GUARDIAN_ALERTS
+        - DATA_OPERATIONS
+        - UNKNOWN
+
+    ReportType:
+      type: string
+      enum:
+        - COMPLIANCE
+        - LIMITS
+        - DOSE_RATE_CHANGE
+        - DEVICE_USAGE
+        - INFUSION_STORY
+        - GUARDIAN_ALERTS
+
+    PipelineGroup:
+      type: string
+      enum:
+        - INGESTION
+        - NORMALIZATION
+        - PROJECTION
+        - RECONCILIATION
+        - QUALITY_GATE
+        - UNKNOWN
+
+    PipelineRunStatus:
+      type: string
+      enum:
+        - NOT_STARTED
+        - RUNNING
+        - SUCCEEDED
+        - FAILED
+        - PARTIALLY_SUCCEEDED
+        - RETRYING
+        - UNKNOWN
+
+    QualityGateStatus:
+      type: string
+      enum:
+        - PASSED
+        - FAILED
+        - WARNING
+        - NOT_EVALUATED
+        - UNKNOWN
+
+    DataFreshnessState:
+      type: string
+      enum:
+        - FRESH
+        - STALE
+        - DELAYED
+        - UNKNOWN
+
+    ReconciliationStatus:
+      type: string
+      enum:
+        - MATCHED
+        - MISMATCHED
+        - PARTIAL
+        - NOT_RUN
+        - UNKNOWN
+
+    ResolutionStatus:
+      type: string
+      enum:
+        - OPEN
+        - REVIEWED
+        - RESOLVED
+        - IGNORED
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_DATA_QUALITY_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid data quality query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"

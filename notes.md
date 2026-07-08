@@ -176,13 +176,13 @@ CQI semantic projections / materialized views
 ## For Current CQI
 * [reference-data-api](neo-cqi-api-contracts/cqi-reference-data-api.yaml)
 * [compliance-api](neo-cqi-api-contracts/cqi-compliance-api.yaml)
-* limits-api
-* dose-rate-change-api
-* device-usage-api
-* infusion-story-api
-* guardian-alert-api
-* report-preferences-api
-* data-quality-api
+* [limits-api](neo-cqi-api-contracts/cqi-limits-api.yaml)
+* [dose-rate-change-api](neo-cqi-api-contracts/cqi-dose-rate-changes-api.yaml)
+* [device-usage-api](neo-cqi-api-contracts/cqi-device-usage-api.yaml)
+* [infusion-story-api](neo-cqi-api-contracts/cqi-infusion-story-api.yaml)
+* [guardian-alert-api](neo-cqi-api-contracts/cqi-guardian-alert-api.yaml)
+* [report-preferences-api](neo-cqi-api-contracts/cqi-report-preferences-api.yaml)
+* [data-quality-api](neo-cqi-api-contracts/cqi-data-quality-api.yaml)
 
 ## For Future CQI (Short Term)
 TBD
@@ -308,7 +308,7 @@ Lakehouse / Storage Context
 
 ##### Consumes:
 
-From Reference Context:
+###### From Reference Context:
 
 ```text
 DrugLibrary
@@ -319,7 +319,8 @@ Enterprise Hierarchy
 
 ```
 
-From Reference Context:
+###### From Reference Context:
+
 ```text
 Infusion
 Infusion Events
@@ -436,25 +437,1770 @@ This would be the first bounded context implemented, because every other context
 ---
 
 ### limits-api
-(TBD)
+#### Responsibilities
+##### Owns:
+
+```text
+
+Limit Event
+Soft Limit Event
+Hard Limit Event
+Spectrum Indirect Limit Event
+Limit Event Summary
+Limit Event Breakdown
+Limit Event Trend
+Limit Event Detail
+Limit Next Action
+Limit Outcome
+Limit Parameter Distribution
+Limit Event Leaderboard
+Limit Event Export View
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Infusion Journey Context
+Compliance Context
+Guardian Context
+Device Usage Context
+Report Experience Context
+Export Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+
+DrugLibraryVersion
+CareArea
+Drug
+PumpType
+Device
+EnterpriseHierarchyNode
+
+```
+
+
+###### from Infusion Journey Context:
+
+```text
+Infusion
+InfusionEvent
+ProgrammingEvent
+InfusionStart/End facts
+Pump run value
+Infusion story availability indicator
+
+```
+
+###### from Guardian / Alert Context:
+
+```text
+GuardianEventDetected
+GuardianAlertReference
+GuardianLimitSignal
+
+```
+
+###### from Data Operations / Data Quality Context:
+
+```text
+DataFreshness
+Watermark
+DataQualityIndicator
+ProcessingStatus
+
+
+```
+
+##### Domain Model
+
+```text
+Core model
+LimitEvent
+ ├─ limitEventId
+ ├─ infusionId
+ ├─ eventType
+ │   ├─ SOFT_LIMIT
+ │   ├─ HARD_LIMIT
+ │   ├─ SPECTRUM_INDIRECT_LIMIT
+ │   └─ GUARDIAN_LIMIT
+ ├─ limitDirection
+ │   ├─ UPPER
+ │   ├─ LOWER
+ │   └─ UNKNOWN
+ ├─ limitParameter
+ │   ├─ DOSE
+ │   ├─ RATE
+ │   ├─ VOLUME
+ │   ├─ TIME
+ │   ├─ CONCENTRATION
+ │   ├─ DRUG_AMOUNT
+ │   └─ PATIENT_WEIGHT
+ ├─ attemptedValue
+ ├─ limitValue
+ ├─ finalPumpRunValue
+ ├─ nextAction
+ ├─ occurredAt
+ ├─ drugLibraryVersionId
+ ├─ careAreaId
+ ├─ drugId
+ ├─ deviceId
+ └─ sourceEventReference
+
+
+```
+
+```text
+
+Analytical model
+
+LimitSummary
+ ├─ totalLimitEvents
+ ├─ softLimitEvents
+ ├─ hardLimitEvents
+ ├─ spectrumIndirectLimitEvents
+ ├─ guardianLimitEvents
+ ├─ overrideCount
+ ├─ pullbackCount
+ ├─ drugChangeCount
+ ├─ basicModeCount
+ └─ cancelledCount
+
+LimitBreakdown
+ ├─ groupBy
+ └─ items[]
+      ├─ id
+      ├─ name
+      ├─ totalLimitEvents
+      ├─ softLimitEvents
+      ├─ hardLimitEvents
+      ├─ overrideCount
+      ├─ pullbackCount
+      └─ eventRate
+
+LimitTrend
+ ├─ granularity
+ └─ points[]
+      ├─ periodStart
+      ├─ periodEnd
+      ├─ totalLimitEvents
+      ├─ softLimitEvents
+      ├─ hardLimitEvents
+      └─ overrideCount
+
+```
+
+```text
+Detail model
+LimitEventDetail
+ ├─ limitEventId
+ ├─ infusionId
+ ├─ eventType
+ ├─ limitParameter
+ ├─ limitDirection
+ ├─ attemptedValue
+ ├─ limitValue
+ ├─ finalPumpRunValue
+ ├─ nextAction
+ ├─ drug
+ ├─ careArea
+ ├─ drugLibraryVersion
+ ├─ device
+ ├─ occurredAt
+ ├─ canShowInfusionStory
+ └─ infusionStoryAvailabilityReason
+
+
+```
+
+##### Events Owned by this API
+
+```text
+
+LimitEventRecorded
+SoftLimitEventRecorded
+HardLimitEventRecorded
+SpectrumIndirectLimitEventRecorded
+GuardianLimitEventReferenced
+LimitNextActionClassified
+LimitSummaryCalculated
+LimitBreakdownCalculated
+LimitTrendCalculated
+LimitParameterDistributionCalculated
+LimitEventExportRequested
+LimitDataRefreshed
+
+
+```
+
+##### Final API Portfolio
+
+```text
+
+POST /api/cqi/v1/limits/summary-query
+POST /api/cqi/v1/limits/breakdown-query
+POST /api/cqi/v1/limits/trends-query
+POST /api/cqi/v1/limits/events-query
+GET  /api/cqi/v1/limits/events/{limitEventId}
+GET  /api/cqi/v1/limits/events/{limitEventId}/infusion-story-reference
+POST /api/cqi/v1/limits/parameter-distribution-query
+POST /api/cqi/v1/limits/exports
+GET  /api/cqi/v1/limits/exports/{exportId}
+
+```
+
 
 ### dose-rate-change-api
-(TBD)
+#### Responsibilities
+##### Owns:
+
+```text
+
+Dose Rate Change Event
+Dose Rate Change Summary
+Dose Rate Change Breakdown
+Dose Rate Change Trend
+Dose Rate Change Detail
+Dose Rate Change Average Metrics
+Dose Rate Change Direction
+Dose Rate Change Outcome
+Dose Rate Change Frequency
+Dose Rate Change Event Chart
+Dose Rate Change Export View
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Infusion Journey Context
+Limits Context
+Compliance Context
+Guardian Context
+Device Usage Context
+Report Experience Context
+Export Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+
+DrugLibraryVersion
+CareArea
+Drug
+PumpType
+Device
+EnterpriseHierarchyNode
+
+```
+
+
+###### from Infusion Journey Context:
+
+```text
+
+Infusion
+InfusionEvent
+ProgrammingEvent
+DoseRateChangeFact
+InfusionStarted
+InfusionCompleted
+PumpRunValue
+
+```
+
+###### from Limits Context:
+
+```text
+
+LimitEventReference
+DoseRateChangeLimitOutcome
+Pullback
+Override
+WithinLimit
+
+```
+
+###### from Pump/Event Normalization Context:
+
+```text
+
+PumpEventReceived
+DoseRatePriorValue
+DoseRateResultingValue
+DoseRateUnits
+ProgramType
+ModeType
+SourceEventReference
+
+
+```
+###### from Data Operations / Data Quality Context:
+
+```text
+
+DataFreshness
+Watermark
+DataQualityIndicator
+ProcessingStatus
+
+
+```
+##### Domain Model
+
+```text
+
+Core model
+
+DoseRateChangeEvent
+ ├─ doseRateChangeEventId
+ ├─ infusionId
+ ├─ occurredAt
+ ├─ direction
+ │   ├─ INCREASE
+ │   ├─ DECREASE
+ │   └─ UNKNOWN
+ ├─ priorDoseRate
+ ├─ attemptedDoseRate
+ ├─ resultingDoseRate
+ ├─ completedDoseRate
+ ├─ doseRateUnits
+ ├─ changeAmount
+ ├─ changePercent
+ ├─ outcome
+ │   ├─ WITHIN_LIMIT
+ │   ├─ LIMIT_EVENT
+ │   ├─ PULLBACK
+ │   ├─ OVERRIDE
+ │   ├─ CANCELLED
+ │   └─ UNKNOWN
+ ├─ drugLibraryVersionId
+ ├─ careAreaId
+ ├─ drugId
+ ├─ deviceId
+ ├─ pumpType
+ ├─ programType
+ ├─ modeType
+ └─ sourceEventReference
+`
+
+
+```
+
+```text
+
+Analytical model
+
+DoseRateChangeSummary
+ ├─ totalDoseRateChanges
+ ├─ increaseCount
+ ├─ decreaseCount
+ ├─ withinLimitCount
+ ├─ limitEventCount
+ ├─ pullbackCount
+ ├─ overrideCount
+ ├─ averageIncreaseAttemptedPullback
+ ├─ averageDecreaseAttemptedPullback
+ ├─ averageIncreaseAttemptedOverride
+ ├─ averageDecreaseAttemptedOverride
+ ├─ averageIncreaseCompletedWithinLimit
+ └─ averageDecreaseCompletedWithinLimit
+
+```
+
+```text
+
+Breakdown Model
+DoseRateChangeBreakdown
+ ├─ groupBy
+ └─ items[]
+      ├─ id
+      ├─ name
+      ├─ totalDoseRateChanges
+      ├─ increaseCount
+      ├─ decreaseCount
+      ├─ withinLimitCount
+      ├─ limitEventCount
+      ├─ pullbackCount
+      └─ overrideCount
+
+```
+
+```text
+
+Detail model
+DoseRateChangeDetail
+ ├─ doseRateChangeEventId
+ ├─ infusionId
+ ├─ occurredAt
+ ├─ drugName
+ ├─ drugModifier
+ ├─ concentration
+ ├─ careAreaName
+ ├─ deviceSerialNumber
+ ├─ pumpType
+ ├─ priorDoseRate
+ ├─ attemptedDoseRate
+ ├─ resultingDoseRate
+ ├─ completedDoseRate
+ ├─ outcome
+ ├─ relatedLimitEventId
+ └─ sourceEventReference
+
+
+
+```
+
+##### Events Owned by this API
+
+```text
+
+DoseRateChangeEventRecorded
+DoseRateChangeOutcomeClassified
+DoseRateChangeSummaryCalculated
+DoseRateChangeBreakdownCalculated
+DoseRateChangeTrendCalculated
+DoseRateChangeAverageMetricsCalculated
+DoseRateChangeExportRequested
+DoseRateChangeDataRefreshed
+
+
+```
+
+##### Final API Portfolio
+
+```text
+
+POST /api/cqi/v1/dose-rate-changes/summary-query
+POST /api/cqi/v1/dose-rate-changes/breakdown-query
+POST /api/cqi/v1/dose-rate-changes/trends-query
+POST /api/cqi/v1/dose-rate-changes/average-metrics-query
+POST /api/cqi/v1/dose-rate-changes/events-query
+GET  /api/cqi/v1/dose-rate-changes/events/{doseRateChangeEventId}
+POST /api/cqi/v1/dose-rate-changes/exports
+GET  /api/cqi/v1/dose-rate-changes/exports/{exportId}
+
+
+```
+
+
+
 
 ### device-usage-api
-(TBD)
+
+#### Responsibilities
+##### Owns:
+
+```text
+Device Usage Summary
+Device Utilization
+Device Activity
+Device Connectivity
+Device Usage Trend
+Device Usage Detail
+Device Alarm / Error Summary
+Device Alarm / Error Detail
+Device Usage Graph Data
+Device Usage Export View
+
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Infusion Journey Context
+Limits Context
+Compliance Context
+Dose Rate Change Context
+Guardian Context
+Report Experience Context
+Export Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+Device Management Context
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+
+Device
+PumpType
+DrugLibrary
+DrugLibraryVersion
+EnterpriseHierarchyNode
+CareArea
+Drug
+
+```
+
+
+###### from Infusion Journey Context:
+
+```text
+
+Infusion
+InfusionStarted
+InfusionCompleted
+InfusionEventRecorded
+InfusionCount
+InfusionStoryReference
+
+```
+
+###### from  Device Management / IQE source systems Context:
+
+```text
+
+Device registration metadata
+Device model/type metadata
+Current or last-known enterprise group
+
+```
+
+###### from Pump/Event Normalization Context:
+
+```text
+
+DeviceConnected
+DeviceDisconnected
+ConnectivityEvent
+DeviceActivityEvent
+PumpErrorEvent
+AlarmEvent
+DeviceStatusChanged
+
+
+```
+###### from Data Operations / Data Quality Context:
+
+```text
+
+DataFreshness
+Watermark
+ProcessingStatus
+DataQualityIndicator
+
+
+```
+##### Domain Model
+
+```text
+
+Core model
+
+DeviceUsageSummary
+ ├─ deviceId
+ ├─ deviceSerialNumber
+ ├─ pumpType
+ ├─ deviceModel
+ ├─ deviceStatus
+ ├─ connectionPercentage
+ ├─ averageUtilization
+ ├─ currentEnterpriseHierarchyNodeId
+ ├─ currentEnterpriseGroupName
+ ├─ infusionCount
+ ├─ errorCount
+ └─ lastUpdatedAt
+
+
+```
+
+```text
+
+Utilization model
+DeviceUtilization
+ ├─ deviceId
+ ├─ deviceSerialNumber
+ ├─ utilizationPercentage
+ ├─ connectedDuration
+ ├─ activeInfusionDuration
+ ├─ idleDuration
+ ├─ unavailableDuration
+ └─ period
+
+
+```
+
+```text
+
+Activity Model
+DeviceActivity
+ ├─ deviceId
+ ├─ deviceSerialNumber
+ ├─ activityCount
+ ├─ infusionCount
+ ├─ connectCount
+ ├─ disconnectCount
+ ├─ errorCount
+ ├─ alarmCount
+ └─ period
+
+```
+
+```text
+
+Alarm model
+
+DeviceUsageErrorEvent
+ ├─ deviceUsageErrorEventId
+ ├─ deviceId
+ ├─ deviceSerialNumber
+ ├─ infusionId
+ ├─ occurredAt
+ ├─ errorName
+ ├─ alarmName
+ ├─ drugName
+ ├─ drugModifier
+ ├─ concentration
+ ├─ doseRate
+ ├─ careAreaId
+ ├─ careAreaName
+ ├─ enterpriseHierarchyNodeId
+ ├─ enterpriseGroupName
+ └─ sourceEventReference
+
+
+```
+
+```text
+
+Trend model
+
+DeviceUsageTrend
+ ├─ granularity
+ └─ points[]
+      ├─ periodStart
+      ├─ periodEnd
+      ├─ deviceCount
+      ├─ averageConnectionPercentage
+      ├─ averageUtilization
+      ├─ infusionCount
+      ├─ errorCount
+      └─ alarmCount
+
+
+```
+
+##### Events Owned by this API
+
+```text
+DeviceUsageSummaryCalculated
+DeviceUtilizationCalculated
+DeviceActivityCalculated
+DeviceUsageTrendCalculated
+DeviceUsageErrorEventRecorded
+DeviceUsageExportRequested
+DeviceUsageDataRefreshed
+
+
+```
+
+##### Final API Portfolio
+
+```text
+
+POST /api/cqi/v1/device-usage/summary-query
+POST /api/cqi/v1/device-usage/utilization-query
+POST /api/cqi/v1/device-usage/activity-query
+POST /api/cqi/v1/device-usage/trends-query
+POST /api/cqi/v1/device-usage/errors-query
+GET  /api/cqi/v1/device-usage/errors/{deviceUsageErrorEventId}
+GET  /api/cqi/v1/device-usage/devices/{deviceId}
+POST /api/cqi/v1/device-usage/exports
+GET  /api/cqi/v1/device-usage/exports/{exportId}
+
+
+```
+
 
 ### infusion-story-api
-(TBD)
+
+#### Responsibilities
+##### Owns:
+
+```text
+Infusion Story
+Infusion Story Header
+Infusion Story Graph
+Infusion Story Timeline
+Infusion Story Event Sequence
+Infusion Story Delivery Status
+Infusion Story Plot Points
+Infusion Story Event Icons
+Infusion Story Alert Icons
+Infusion Story Tooltip Data
+Infusion Navigation Reference
+Infusion Story Availability
+
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Compliance Context
+Limits Context
+Dose Rate Change Context
+Device Usage Context
+Guardian Context
+Report Experience Context
+Export Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+Raw Pump Event Ingestion Context
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+Device
+PumpType
+Drug
+DrugLibraryVersion
+CareArea
+EnterpriseHierarchyNode
+``
+
+
+```
+
+
+###### from Infusion Journey Context:
+
+```text
+
+Infusion
+InfusionStarted
+InfusionCompleted
+InfusionEventRecorded
+DeliveryStatusChanged
+FlowRateChanged
+DoseRateChanged
+VolumeInfusedUpdated
+InitialProgramRecorded
+
+
+```
+
+###### from Limits Context:
+
+```text
+
+LimitEventRecorded
+SoftLimitEventRecorded
+HardLimitEventRecorded
+LimitNextActionClassified
+
+```
+
+###### from Guardian Context:
+
+```text
+
+GuardianEventDetected
+GuardianAdvisoryReference
+GuardianTooltipData
+
+
+```
+###### from Device Usage / Pump Events:
+
+```text
+
+PumpRunStarted
+PumpRunStopped
+DevicePowerEvent
+AlarmEvent
+StatusEvent
+
+
+```
+##### Domain Model
+
+```text
+
+Core model
+
+InfusionStory
+ ├─ infusionId
+ ├─ header
+ ├─ graph
+ ├─ events[]
+ ├─ alerts[]
+ ├─ navigation
+ └─ dataFreshness
+
+
+```
+
+```text
+
+Header model
+
+InfusionStoryHeader
+ ├─ infusionId
+ ├─ infusionNumber
+ ├─ deviceSerialNumber
+ ├─ deviceModel
+ ├─ pumpType
+ ├─ infusionStartDateTime
+ ├─ infusionEndDateTime
+ ├─ careAreaId
+ ├─ careAreaName
+ ├─ drugId
+ ├─ drugName
+ ├─ drugModifier
+ ├─ drugAlias
+ ├─ concentration
+ ├─ startingDoseRate
+ ├─ startingFlowRate
+ ├─ programType
+ ├─ enterpriseHierarchyNodeId
+ ├─ enterpriseGroupName
+ ├─ totalInfusionTime
+ └─ totalVolumeInfused
+
+```
+
+```text
+
+Graph Model
+
+InfusionStoryGraph
+ ├─ deliveryStatusSegments[]
+ ├─ flowRateSeries[]
+ ├─ doseRateSeries[]
+ ├─ totalVolumeSeries[]
+ ├─ eventMarkers[]
+ ├─ alertMarkers[]
+ └─ tooltipDefinitions[]
+
+```
+
+```text
+
+Event model
+
+InfusionStoryEvent
+ ├─ eventId
+ ├─ eventType
+ ├─ eventCategory
+ ├─ occurredAt
+ ├─ label
+ ├─ flowRate
+ ├─ doseRate
+ ├─ totalVolume
+ ├─ vtbi
+ ├─ deliveryStatus
+ ├─ sourceEventReference
+ └─ tooltip
+
+```
+
+```text
+
+Alert / limit / Guardian marker model
+
+InfusionStoryMarker
+ ├─ markerId
+ ├─ markerType
+ │   ├─ LIMIT
+ │   ├─ GUARDIAN
+ │   ├─ ALARM
+ │   ├─ DEVICE_STATUS
+ │   └─ USER_ACTION
+ ├─ occurredAt
+ ├─ label
+ ├─ severity
+ ├─ relatedEventId
+ ├─ relatedReportContext
+ └─ tooltip
+
+
+```
+
+
+```text
+
+Navigation Model
+
+InfusionStoryNavigation
+ ├─ previousInfusionId
+ ├─ nextInfusionId
+ ├─ previousDrugId
+ └─ nextDrugId
+
+
+```
+##### Events Owned by this API
+
+```text
+InfusionStoryBuilt
+InfusionStoryUpdated
+InfusionStoryGraphBuilt
+InfusionStoryHeaderBuilt
+InfusionStoryTimelineBuilt
+InfusionStoryMarkerAdded
+InfusionStoryNavigationResolved
+InfusionStoryDataRefreshed
+
+
+```
+
+##### Final API Portfolio
+
+```text
+
+GET  /api/cqi/v1/infusion-stories/{infusionId}
+GET  /api/cqi/v1/infusion-stories/{infusionId}/header
+GET  /api/cqi/v1/infusion-stories/{infusionId}/graph
+GET  /api/cqi/v1/infusion-stories/{infusionId}/events
+GET  /api/cqi/v1/infusion-stories/{infusionId}/markers
+GET  /api/cqi/v1/infusion-stories/{infusionId}/navigation
+POST /api/cqi/v1/infusion-stories/availability-query
+POST /api/cqi/v1/infusion-stories/exports
+GET  /api/cqi/v1/infusion-stories/exports/{exportId}
+
+
+```
+
+
 
 ### guardian-alert-api
-(TBD)
+
+#### Responsibilities
+##### Owns:
+
+```text
+
+Guardian Alert
+Guardian Advisory Event
+Guardian Alert Summary
+Guardian Alert Breakdown
+Guardian Alert Trend
+Guardian Alert Detail
+Guardian Alert Tooltip View
+Guardian Alert Feedback View
+Guardian Alert Insight View
+Guardian Alert Export View
+Guardian Alert Infusion Story Reference
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Guardian Model / Algorithm Context
+Guardian Configuration Context
+Reference Data Context
+Infusion Story Context
+Limits Context
+Compliance Context
+Dose Rate Change Context
+Device Usage Context
+Report Experience Context
+Export Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+Raw Pump Event Ingestion Context
+Pump Runtime / Pump Operation Context
+
+```
+
+##### Consumes
+
+###### from Guardian Processing / Applicaiton Context:
+
+```text
+
+GuardianAlertGenerated
+GuardianAdvisoryEvent
+GuardianModelVersion
+GuardianConfigurationVersion
+GuardianThresholdViolated
+GuardianAlertCode
+GuardianAlertValue
+GuardianAttemptedValue
+
+
+```
+
+###### from Reference Data Context:
+
+```text
+
+DrugLibraryVersion
+CareArea
+Drug
+DrugAlias
+Device
+PumpType
+EnterpriseHierarchyNode
+
+```
+
+
+###### from Infusion Story Context:
+
+```text
+
+InfusionStoryReference
+Infusion Timeline Position
+InfusionId
+
+
+```
+
+###### from Limits / Dose Rate Change Contexts:
+
+```text
+LimitEventReference
+RateChangeAttemptedValue
+DoseRatePrior
+LimitExceededValue
+NextAction
+
+
+```
+
+###### from  User Feedback / CQI Feedback Flow Context:
+
+```text
+
+GuardianFeedbackSubmitted
+UsefulFeedback
+NotUsefulFeedback
+ClinicalRelevanceFeedback
+
+
+```
+###### from Data Operations / Data Quality Context:
+
+```text
+DataFreshness
+Watermark
+ProcessingStatus
+DataQualityIndicator
+
+```
+##### Domain Model
+
+```text
+
+Core model
+
+GuardianAlert
+ ├─ guardianAlertId
+ ├─ infusionId
+ ├─ alertCode
+ ├─ advisoryEvent
+ ├─ alertCategory
+ ├─ alertValue
+ ├─ attemptedValue
+ ├─ thresholdViolated
+ ├─ context
+ ├─ occurredAt
+ ├─ modelVersion
+ ├─ configurationVersion
+ ├─ drugLibraryVersionId
+ ├─ careAreaId
+ ├─ drugId
+ ├─ deviceId
+ ├─ pumpType
+ ├─ relatedLimitEventId
+ ├─ relatedDoseRateChangeEventId
+ ├─ infusionStoryReference
+ └─ sourceEventReference
+
+
+```
+
+```text
+
+Tooltip  model
+GuardianAlertTooltip
+ ├─ guardianAlertId
+ ├─ timestamp
+ ├─ advisoryEvent
+ ├─ alertValue
+ ├─ attemptedValue
+ ├─ thresholdViolated
+ ├─ nextAction
+ └─ contextFields[]
+
+
+```
+
+```text
+
+Analytical model
+GuardianAlertSummary
+ ├─ totalGuardianAlerts
+ ├─ uncommonDrugAlertCount
+ ├─ stepRateAlertCount
+ ├─ vtbiAlertCount
+ ├─ alertsWithFeedbackCount
+ ├─ usefulFeedbackCount
+ ├─ notUsefulFeedbackCount
+ └─ alertsLinkedToInfusionStoryCount
+
+
+```
+
+```text
+
+Breakdown Model
+GuardianAlertBreakdown
+ ├─ groupBy
+ └─ items[]
+      ├─ id
+      ├─ name
+      ├─ totalGuardianAlerts
+      ├─ usefulFeedbackCount
+      ├─ notUsefulFeedbackCount
+      └─ alertRate
+
+```
+
+```text
+
+Trend model
+
+GuardianAlertTrend
+ ├─ granularity
+ └─ points[]
+      ├─ periodStart
+      ├─ periodEnd
+      ├─ totalGuardianAlerts
+      ├─ uncommonDrugAlertCount
+      ├─ stepRateAlertCount
+      └─ feedbackCount
+
+
+```
+
+```text
+
+Feedback model
+
+GuardianAlertFeedback
+ ├─ guardianAlertId
+ ├─ feedbackValue
+ │   ├─ USEFUL
+ │   ├─ NOT_USEFUL
+ │   └─ UNKNOWN
+ ├─ feedbackReason
+ ├─ feedbackNote
+ ├─ submittedAt
+ └─ submittedByUserId
+
+```
+
+##### Events Owned by this API
+
+```text
+
+GuardianAlertProjected
+GuardianAlertSummaryCalculated
+GuardianAlertBreakdownCalculated
+GuardianAlertTrendCalculated
+GuardianAlertTooltipBuilt
+GuardianAlertFeedbackRecorded
+GuardianAlertInfusionStoryLinked
+GuardianAlertExportRequested
+GuardianAlertDataRefreshed
+
+```
+
+##### Final API Portfolio
+
+```text
+
+POST /api/cqi/v1/guardian-alerts/summary-query
+POST /api/cqi/v1/guardian-alerts/breakdown-query
+POST /api/cqi/v1/guardian-alerts/trends-query
+POST /api/cqi/v1/guardian-alerts/alerts-query
+GET  /api/cqi/v1/guardian-alerts/alerts/{guardianAlertId}
+GET  /api/cqi/v1/guardian-alerts/alerts/{guardianAlertId}/tooltip
+GET  /api/cqi/v1/guardian-alerts/alerts/{guardianAlertId}/infusion-story-reference
+POST /api/cqi/v1/guardian-alerts/feedback
+POST /api/cqi/v1/guardian-alerts/insights-query
+POST /api/cqi/v1/guardian-alerts/exports
+GET  /api/cqi/v1/guardian-alerts/exports/{exportId}
+
+
+```
+
+
 
 ### report-preferences-api
-(TBD)
+
+#### Responsibilities
+##### Owns:
+
+```text
+
+Report Preference
+Saved Filter
+Default Filter Selection
+Report-Specific Filter State
+Report View Preference
+Report Sort Preference
+Report Column Preference
+Report Pagination Preference
+Report Display Preference
+Last Used Report Preference
+Preference Scope
+Preference Ownership
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Compliance Context
+Limits Context
+Dose Rate Change Context
+Device Usage Context
+Guardian Alert Context
+Infusion Story Context
+Export Context
+Authentication / Authorization Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+
+```
+
+##### Consumes
+
+###### from R Authentication / User Context:
+
+```text
+
+User identity
+User ID
+Tenant / site context
+Role / permission context
+
+```
+
+
+###### from Reference Data Context:
+
+```text
+Report type
+Supported filter definitions
+Supported sort fields
+Supported columns
+Supported display modes
+
+
+```
+
+
+###### from Device Usage Report behavior:
+
+```text
+
+Report-specific advanced filter selection
+Retained filter state
+Default reset behavior
+
+```
+
+##### Domain Model
+
+```text
+
+Core model
+ReportPreference
+ ├─ preferenceId
+ ├─ userId
+ ├─ reportType
+ ├─ preferenceName
+ ├─ preferenceScope
+ ├─ isDefault
+ ├─ filters
+ ├─ sort
+ ├─ columns
+ ├─ display
+ ├─ pagination
+ ├─ createdAt
+ ├─ updatedAt
+ └─ version
+
+
+
+```
+
+```text
+
+Saved Filter model
+SavedFilter
+ ├─ savedFilterId
+ ├─ userId
+ ├─ reportType
+ ├─ name
+ ├─ description
+ ├─ filters
+ ├─ isDefault
+ ├─ createdAt
+ └─ updatedAt
+
+
+```
+
+```text
+
+Filter State Model
+ReportFilterState
+ ├─ reportType
+ ├─ drugLibraryVersionIds
+ ├─ drugLibraryScope
+ ├─ careAreaIds
+ ├─ drugIds
+ ├─ pumpTypes
+ ├─ enterpriseHierarchyNodeIds
+ ├─ deviceIds
+ ├─ dateRange
+ ├─ reportSpecificFilters
+ └─ lastAppliedAt
+
+
+```
+
+```text
+
+View Preference model
+ReportViewPreference
+ ├─ reportType
+ ├─ selectedTab
+ ├─ chartType
+ ├─ graphView
+ ├─ tableDensity
+ ├─ expandedSections
+ ├─ visibleColumns
+ └─ pinnedColumns
+
+```
+
+
+```text
+
+Sort preference model
+ReportSortPreference
+ ├─ field
+ └─ direction
+
+```
+
+
+```text
+
+Column preference model
+ReportColumnPreference
+ ├─ visibleColumns[]
+ ├─ hiddenColumns[]
+ ├─ columnOrder[]
+ └─ pinnedColumns[]
+
+```
+
+
+##### Events Owned by this API
+
+```text
+
+ReportPreferenceCreated
+ReportPreferenceUpdated
+ReportPreferenceDeleted
+ReportPreferenceSetAsDefault
+ReportPreferenceCleared
+SavedFilterCreated
+SavedFilterUpdated
+SavedFilterDeleted
+SavedFilterApplied
+ReportFilterStateRestored
+ReportPreferenceResetToDefault
+
+```
+
+##### Final API Portfolio
+
+```text
+
+GET    /api/cqi/v1/report-preferences/me
+GET    /api/cqi/v1/report-preferences/me/{reportType}
+PUT    /api/cqi/v1/report-preferences/me/{reportType}
+DELETE /api/cqi/v1/report-preferences/me/{reportType}
+
+GET    /api/cqi/v1/report-preferences/me/{reportType}/saved-filters
+POST   /api/cqi/v1/report-preferences/me/{reportType}/saved-filters
+GET    /api/cqi/v1/report-preferences/me/{reportType}/saved-filters/{savedFilterId}
+PUT    /api/cqi/v1/report-preferences/me/{reportType}/saved-filters/{savedFilterId}
+DELETE /api/cqi/v1/report-preferences/me/{reportType}/saved-filters/{savedFilterId}
+
+POST   /api/cqi/v1/report-preferences/me/{reportType}/saved-filters/{savedFilterId}/apply
+POST   /api/cqi/v1/report-preferences/me/{reportType}/default
+POST   /api/cqi/v1/report-preferences/me/{reportType}/reset
+
+
+
+```
+
+
 
 ### data-quality-api
-(TBD)
+
+#### Responsibilities
+##### Owns:
+
+```text
+
+Data Quality Issue
+Invalid Message
+Rejected Message
+Duplicate Event
+Orphaned Record
+Schema Validation Issue
+Schema Drift Indicator
+Processing Watermark
+Pipeline Processing Status
+Data Freshness
+Data Completeness
+Data Reconciliation Summary
+Dead Letter Queue View
+Retry Status
+Recovery Status
+Quality Gate Result
+Data Quality Trend
+Data Quality Summary
+
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Pump Event Ingestion Context
+Lakehouse Storage Context
+Reference Data Context
+Infusion Story Context
+Compliance Context
+Limits Context
+Dose Rate Change Context
+Device Usage Context
+Guardian Alert Context
+Report Preferences Context
+Export Context
+Infrastructure / DevOps Context
+Security / Authorization Context
+``
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+
+ReferenceDataRefreshed
+DrugLibraryVersionActivated
+DeviceMetadataUpdated
+EnterpriseHierarchyChanged
+ReferenceValidationFailed
+
+```
+
+
+###### from Reports Context:
+
+```text
+ComplianceProjectionStatus
+LimitsProjectionStatus
+DoseRateChangeProjectionStatus
+DeviceUsageProjectionStatus
+GuardianAlertProjectionStatus
+InfusionStoryProjectionStatus
+
+
+```
+
+###### from Lakehouse / Processing Pipeline Context:
+
+```text
+PipelineRunStarted
+PipelineRunCompleted
+PipelineRunFailed
+ProjectionBuilt
+ProjectionFailed
+WatermarkAdvanced
+SchemaValidated
+SchemaValidationFailed
+QualityGatePassed
+QualityGateFailed
+
+
+```
+
+###### from Pump/Event Ingestion Context:
+
+```text
+
+PumpMessageReceived
+PumpMessageRejected
+InvalidMessageDetected
+UnsupportedMessageDetected
+DeadLetterMessageCreated
+MessageAcknowledgementStatus
+
+
+```
+###### from Data Operations / Observability / Data Quality Context:
+
+```text
+
+LogSignal
+MetricSignal
+AlertSignal
+RetryAttempted
+RecoveryAttempted
+RollbackPerformed
+CapacityThresholdBreached
+
+
+```
+##### Domain Model
+
+```text
+
+Core model
+DataQualityIssue
+ ├─ issueId
+ ├─ issueType
+ ├─ severity
+ ├─ status
+ ├─ sourceContext
+ ├─ affectedEntityType
+ ├─ affectedEntityId
+ ├─ detectionTime
+ ├─ firstSeenAt
+ ├─ lastSeenAt
+ ├─ description
+ ├─ recommendedAction
+ ├─ relatedPipelineRunId
+ ├─ relatedMessageId
+ ├─ relatedReportType
+ └─ evidence[]
+
+
+
+```
+
+```text
+
+Invalid / DLQ message model
+
+InvalidMessage
+ ├─ messageId
+ ├─ sourceSystem
+ ├─ receivedAt
+ ├─ rejectedAt
+ ├─ rejectionReason
+ ├─ messageType
+ ├─ pumpType
+ ├─ deviceSerialNumber
+ ├─ correlationId
+ ├─ dlqReference
+ └─ validationErrors[]
+
+```
+
+```text
+
+Duplicate / orphan model
+DuplicateRecord
+ ├─ duplicateGroupId
+ ├─ entityType
+ ├─ compositeKey
+ ├─ recordIds[]
+ ├─ firstSeenAt
+ ├─ lastSeenAt
+ ├─ duplicateCount
+ └─ resolutionStatus
+
+OrphanedRecord
+ ├─ orphanId
+ ├─ childEntityType
+ ├─ childEntityId
+ ├─ missingParentEntityType
+ ├─ missingParentKey
+ ├─ detectedAt
+ └─ status
+
+```
+
+```text
+
+Processing status model
+PipelineProcessingStatus
+ ├─ pipelineName
+ ├─ pipelineRunId
+ ├─ status
+ ├─ startedAt
+ ├─ completedAt
+ ├─ lastSuccessfulRunAt
+ ├─ retryCount
+ ├─ processedCount
+ ├─ rejectedCount
+ ├─ duplicateCount
+ ├─ failedCount
+ ├─ currentWatermark
+ └─ qualityGateStatus
+
+
+
+```
+
+```text
+
+Data freshness / watermark model
+DataFreshnessStatus
+ ├─ reportType
+ ├─ projectionName
+ ├─ asOf
+ ├─ sourceWatermark
+ ├─ projectionWatermark
+ ├─ lagSeconds
+ ├─ status
+ └─ lastSuccessfulRefreshAt
+
+```
+
+```text
+Reconciliation model
+DataReconciliationSummary
+ ├─ reconciliationId
+ ├─ sourceContext
+ ├─ targetContext
+ ├─ dateRange
+ ├─ sourceCount
+ ├─ targetCount
+ ├─ matchedCount
+ ├─ missingCount
+ ├─ extraCount
+ ├─ duplicateCount
+ ├─ reconciliationStatus
+ └─ completedAt
+
+
+```
+
+
+```text
+Quality gate model
+QualityGateResult
+ ├─ qualityGateId
+ ├─ gateName
+ ├─ status
+ ├─ evaluatedAt
+ ├─ evaluatedDataset
+ ├─ ruleResults[]
+ └─ blocking
+
+
+```
+
+
+##### Events Owned by this API
+
+```text
+DataQualityIssueDetected
+DataQualityIssueUpdated
+DataQualityIssueResolved
+InvalidMessageRecorded
+DuplicateRecordDetected
+OrphanedRecordDetected
+SchemaValidationFailed
+SchemaDriftDetected
+PipelineStatusUpdated
+WatermarkAdvanced
+DataFreshnessCalculated
+ReconciliationCompleted
+QualityGateEvaluated
+QualityGateFailed
+DataQualitySummaryCalculated
+
+
+```
+
+##### Final API Portfolio
+
+```text
+
+GET  /api/cqi/v1/data-quality/summary
+POST /api/cqi/v1/data-quality/issues-query
+GET  /api/cqi/v1/data-quality/issues/{issueId}
+PATCH /api/cqi/v1/data-quality/issues/{issueId}
+
+POST /api/cqi/v1/data-quality/invalid-messages-query
+GET  /api/cqi/v1/data-quality/invalid-messages/{messageId}
+
+POST /api/cqi/v1/data-quality/duplicates-query
+POST /api/cqi/v1/data-quality/orphans-query
+
+GET  /api/cqi/v1/data-quality/pipeline-status
+GET  /api/cqi/v1/data-quality/pipeline-status/{pipelineName}
+
+GET  /api/cqi/v1/data-quality/freshness
+GET  /api/cqi/v1/data-quality/freshness/{reportType}
+
+POST /api/cqi/v1/data-quality/reconciliation-query
+GET  /api/cqi/v1/data-quality/reconciliations/{reconciliationId}
+
+POST /api/cqi/v1/data-quality/quality-gates/evaluate
+GET  /api/cqi/v1/data-quality/quality-gates/{qualityGateId}
+
+
+```
+
 
 # API Contract
 

@@ -1,0 +1,1338 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Guardian Alert API
+  version: 1.0.0
+  description: |
+    CQI Guardian Alert API for Neo CQI.
+
+    This API provides CQI-facing Guardian alert summaries, breakdowns,
+    trends, alert-level drill-down, tooltip data, infusion-story references,
+    user feedback capture, non-prescriptive insight views, and export support.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Guardian Alert Summary
+  - name: Guardian Alert Breakdown
+  - name: Guardian Alert Trends
+  - name: Guardian Alerts
+  - name: Guardian Alert Tooltip
+  - name: Guardian Alert Feedback
+  - name: Guardian Alert Insights
+  - name: Guardian Alert Exports
+
+paths:
+
+  /guardian-alerts/summary-query:
+    post:
+      tags:
+        - Guardian Alert Summary
+      operationId: getGuardianAlertSummary
+      summary: Get Guardian alert summary
+      description: Returns aggregate Guardian alert metrics for the selected filters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertSummaryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+                    careAreaIds:
+                      - "CA-ICU"
+                    alertCodes:
+                      - "STEP_RATE"
+                      - "UNCOMMON_DRUG"
+                    pumpTypes:
+                      - "LVP"
+      responses:
+        "200":
+          description: Guardian alert summary returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertSummaryResponse"
+              examples:
+                success:
+                  value:
+                    summary:
+                      totalGuardianAlerts: 1250
+                      uncommonDrugAlertCount: 120
+                      stepRateAlertCount: 300
+                      vtbiAlertCount: 80
+                      alertsWithFeedbackCount: 250
+                      usefulFeedbackCount: 180
+                      notUsefulFeedbackCount: 70
+                      alertsLinkedToInfusionStoryCount: 1100
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/breakdown-query:
+    post:
+      tags:
+        - Guardian Alert Breakdown
+      operationId: getGuardianAlertBreakdown
+      summary: Get Guardian alert breakdown
+      description: Returns Guardian alert metrics grouped by a selected CQI business dimension.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertBreakdownRequest"
+            examples:
+              byDrug:
+                value:
+                  groupBy: "DRUG"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    alertCodes:
+                      - "STEP_RATE"
+      responses:
+        "200":
+          description: Guardian alert breakdown returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertBreakdownResponse"
+              examples:
+                success:
+                  value:
+                    groupBy: "DRUG"
+                    items:
+                      - id: "DRUG-HEPARIN"
+                        name: "Heparin"
+                        totalGuardianAlerts: 250
+                        usefulFeedbackCount: 60
+                        notUsefulFeedbackCount: 20
+                        alertRate: 12.5
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/trends-query:
+    post:
+      tags:
+        - Guardian Alert Trends
+      operationId: getGuardianAlertTrends
+      summary: Get Guardian alert trends
+      description: Returns Guardian alert metrics over time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertTrendRequest"
+            examples:
+              daily:
+                value:
+                  granularity: "DAILY"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    alertCodes:
+                      - "UNCOMMON_DRUG"
+      responses:
+        "200":
+          description: Guardian alert trends returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertTrendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/alerts-query:
+    post:
+      tags:
+        - Guardian Alerts
+      operationId: searchGuardianAlerts
+      summary: Search Guardian alerts
+      description: Returns Guardian alerts for grid, drill-down, and export preparation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertQueryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    alertCodes:
+                      - "STEP_RATE"
+                    feedbackValues:
+                      - "NOT_USEFUL"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "occurredAt"
+                    direction: "DESC"
+      responses:
+        "200":
+          description: Guardian alerts returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/alerts/{guardianAlertId}:
+    get:
+      tags:
+        - Guardian Alerts
+      operationId: getGuardianAlertById
+      summary: Get Guardian alert details
+      parameters:
+        - $ref: "#/components/parameters/GuardianAlertId"
+      responses:
+        "200":
+          description: Guardian alert detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/alerts/{guardianAlertId}/tooltip:
+    get:
+      tags:
+        - Guardian Alert Tooltip
+      operationId: getGuardianAlertTooltip
+      summary: Get Guardian alert tooltip
+      description: Returns tooltip data for Guardian shield or marker display.
+      parameters:
+        - $ref: "#/components/parameters/GuardianAlertId"
+      responses:
+        "200":
+          description: Guardian alert tooltip returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertTooltipResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/alerts/{guardianAlertId}/infusion-story-reference:
+    get:
+      tags:
+        - Guardian Alerts
+      operationId: getGuardianAlertInfusionStoryReference
+      summary: Get Infusion Story reference for a Guardian alert
+      parameters:
+        - $ref: "#/components/parameters/GuardianAlertId"
+      responses:
+        "200":
+          description: Infusion Story reference returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfusionStoryReferenceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/feedback:
+    post:
+      tags:
+        - Guardian Alert Feedback
+      operationId: submitGuardianAlertFeedback
+      summary: Submit Guardian alert feedback
+      description: Captures user feedback for a Guardian alert.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertFeedbackRequest"
+            examples:
+              notUseful:
+                value:
+                  guardianAlertId: "GA-10001"
+                  feedbackValue: "NOT_USEFUL"
+                  feedbackReason: "Clinically not relevant"
+                  feedbackNote: "Alert did not align with site practice."
+      responses:
+        "202":
+          description: Guardian alert feedback accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertFeedbackAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/insights-query:
+    post:
+      tags:
+        - Guardian Alert Insights
+      operationId: getGuardianAlertInsights
+      summary: Get Guardian alert insights
+      description: |
+        Returns non-prescriptive aggregate insights to support review of
+        Guardian alert patterns. This endpoint should not return clinical
+        recommendations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertInsightsRequest"
+      responses:
+        "200":
+          description: Guardian alert insights returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertInsightsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/exports:
+    post:
+      tags:
+        - Guardian Alert Exports
+      operationId: createGuardianAlertExport
+      summary: Create Guardian alert export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianAlertExportRequest"
+      responses:
+        "202":
+          description: Export request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertExportAcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /guardian-alerts/exports/{exportId}:
+    get:
+      tags:
+        - Guardian Alert Exports
+      operationId: getGuardianAlertExportStatus
+      summary: Get Guardian alert export status
+      parameters:
+        - $ref: "#/components/parameters/ExportId"
+      responses:
+        "200":
+          description: Export status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianAlertExportStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    GuardianAlertId:
+      name: guardianAlertId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "GA-10001"
+
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "EXP-GA-1001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    GuardianAlertSummaryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/GuardianAlertFilter"
+
+    GuardianAlertBreakdownRequest:
+      type: object
+      required:
+        - groupBy
+        - filters
+      properties:
+        groupBy:
+          $ref: "#/components/schemas/GuardianAlertGroupBy"
+        filters:
+          $ref: "#/components/schemas/GuardianAlertFilter"
+
+    GuardianAlertTrendRequest:
+      type: object
+      required:
+        - granularity
+        - filters
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        filters:
+          $ref: "#/components/schemas/GuardianAlertFilter"
+
+    GuardianAlertQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/GuardianAlertFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    GuardianAlertInsightsRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/GuardianAlertFilter"
+        groupBy:
+          $ref: "#/components/schemas/GuardianAlertGroupBy"
+
+    GuardianAlertExportRequest:
+      type: object
+      required:
+        - filters
+        - exportFormat
+      properties:
+        filters:
+          $ref: "#/components/schemas/GuardianAlertFilter"
+        exportFormat:
+          $ref: "#/components/schemas/ExportFormat"
+        columns:
+          type: array
+          items:
+            type: string
+          example:
+            - "guardianAlertId"
+            - "infusionId"
+            - "alertCode"
+            - "advisoryEvent"
+            - "alertValue"
+            - "attemptedValue"
+            - "thresholdViolated"
+            - "occurredAt"
+            - "feedbackValue"
+
+    GuardianAlertFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+        drugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+
+        careAreaIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "CA-ICU"
+
+        drugIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DRUG-HEPARIN"
+
+        deviceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DEV-100"
+
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+          example:
+            - "SN001"
+
+        pumpTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "LVP"
+            - "SYR"
+
+        enterpriseHierarchyNodeIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EH-100"
+
+        alertCodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianAlertCode"
+
+        feedbackValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianFeedbackValue"
+
+        modelVersions:
+          type: array
+          items:
+            type: string
+          example:
+            - "GUARDIAN-MODEL-1.0"
+
+        configurationVersions:
+          type: array
+          items:
+            type: string
+          example:
+            - "GUARDIAN-CONFIG-1.0"
+
+    DateRange:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          example: "2026-01-31T23:59:59Z"
+
+    GuardianAlertSummaryResponse:
+      type: object
+      required:
+        - summary
+        - dataFreshness
+      properties:
+        summary:
+          $ref: "#/components/schemas/GuardianAlertSummary"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    GuardianAlertBreakdownResponse:
+      type: object
+      required:
+        - groupBy
+        - items
+        - dataFreshness
+      properties:
+        groupBy:
+          $ref: "#/components/schemas/GuardianAlertGroupBy"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianAlertBreakdownItem"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    GuardianAlertTrendResponse:
+      type: object
+      required:
+        - granularity
+        - points
+        - dataFreshness
+      properties:
+        granularity:
+          $ref: "#/components/schemas/TrendGranularity"
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianAlertTrendPoint"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    GuardianAlertListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianAlert"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    GuardianAlertDetailResponse:
+      type: object
+      required:
+        - guardianAlert
+        - dataFreshness
+      properties:
+        guardianAlert:
+          $ref: "#/components/schemas/GuardianAlertDetail"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    GuardianAlertTooltipResponse:
+      type: object
+      required:
+        - tooltip
+        - dataFreshness
+      properties:
+        tooltip:
+          $ref: "#/components/schemas/GuardianAlertTooltip"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    InfusionStoryReferenceResponse:
+      type: object
+      required:
+        - guardianAlertId
+        - infusionId
+        - canShowInfusionStory
+      properties:
+        guardianAlertId:
+          type: string
+          example: "GA-10001"
+        infusionId:
+          type: string
+          example: "INF-123"
+        canShowInfusionStory:
+          type: boolean
+          example: true
+        reason:
+          type: string
+          nullable: true
+          example: "Infusion Story is available for the Guardian alert."
+        storyReference:
+          $ref: "#/components/schemas/InfusionStoryReference"
+
+    GuardianAlertFeedbackRequest:
+      type: object
+      required:
+        - guardianAlertId
+        - feedbackValue
+      properties:
+        guardianAlertId:
+          type: string
+          example: "GA-10001"
+        feedbackValue:
+          $ref: "#/components/schemas/GuardianFeedbackValue"
+        feedbackReason:
+          type: string
+          nullable: true
+          example: "Clinically not relevant"
+        feedbackNote:
+          type: string
+          nullable: true
+          maxLength: 2000
+          example: "Alert did not align with site practice."
+
+    GuardianAlertFeedbackAcceptedResponse:
+      type: object
+      required:
+        - guardianAlertId
+        - status
+      properties:
+        guardianAlertId:
+          type: string
+          example: "GA-10001"
+        status:
+          type: string
+          enum:
+            - ACCEPTED
+          example: "ACCEPTED"
+
+    GuardianAlertInsightsResponse:
+      type: object
+      required:
+        - items
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianAlertInsight"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    GuardianAlertExportAcceptedResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-GA-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+
+    GuardianAlertExportStatusResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-GA-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        fileName:
+          type: string
+          nullable: true
+          example: "guardian-alert-export-202601.csv"
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if export is ready.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    GuardianAlertSummary:
+      type: object
+      properties:
+        totalGuardianAlerts:
+          type: integer
+          minimum: 0
+          example: 1250
+        uncommonDrugAlertCount:
+          type: integer
+          minimum: 0
+          example: 120
+        stepRateAlertCount:
+          type: integer
+          minimum: 0
+          example: 300
+        vtbiAlertCount:
+          type: integer
+          minimum: 0
+          example: 80
+        alertsWithFeedbackCount:
+          type: integer
+          minimum: 0
+          example: 250
+        usefulFeedbackCount:
+          type: integer
+          minimum: 0
+          example: 180
+        notUsefulFeedbackCount:
+          type: integer
+          minimum: 0
+          example: 70
+        alertsLinkedToInfusionStoryCount:
+          type: integer
+          minimum: 0
+          example: 1100
+
+    GuardianAlertBreakdownItem:
+      type: object
+      required:
+        - id
+        - name
+        - totalGuardianAlerts
+      properties:
+        id:
+          type: string
+          example: "DRUG-HEPARIN"
+        name:
+          type: string
+          example: "Heparin"
+        totalGuardianAlerts:
+          type: integer
+          minimum: 0
+          example: 250
+        usefulFeedbackCount:
+          type: integer
+          minimum: 0
+          example: 60
+        notUsefulFeedbackCount:
+          type: integer
+          minimum: 0
+          example: 20
+        alertRate:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+
+    GuardianAlertTrendPoint:
+      type: object
+      required:
+        - periodStart
+        - periodEnd
+        - totalGuardianAlerts
+      properties:
+        periodStart:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          example: "2026-01-01T23:59:59Z"
+        totalGuardianAlerts:
+          type: integer
+          minimum: 0
+          example: 80
+        uncommonDrugAlertCount:
+          type: integer
+          minimum: 0
+          example: 10
+        stepRateAlertCount:
+          type: integer
+          minimum: 0
+          example: 20
+        feedbackCount:
+          type: integer
+          minimum: 0
+          example: 15
+
+    GuardianAlert:
+      type: object
+      required:
+        - guardianAlertId
+        - occurredAt
+      properties:
+        guardianAlertId:
+          type: string
+          example: "GA-10001"
+        infusionId:
+          type: string
+          nullable: true
+          example: "INF-123"
+        deviceId:
+          type: string
+          nullable: true
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        drugLibraryVersionId:
+          type: string
+          nullable: true
+          example: "DLV-1002"
+        careAreaId:
+          type: string
+          nullable: true
+          example: "CA-ICU"
+        careAreaName:
+          type: string
+          nullable: true
+          example: "ICU"
+        drugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        drugName:
+          type: string
+          nullable: true
+          example: "Heparin"
+        alertCode:
+          $ref: "#/components/schemas/GuardianAlertCode"
+        advisoryEvent:
+          type: string
+          nullable: true
+          example: "IQ Guardian Advisory Event"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:35:00Z"
+        feedbackValue:
+          $ref: "#/components/schemas/GuardianFeedbackValue"
+
+    GuardianAlertDetail:
+      allOf:
+        - $ref: "#/components/schemas/GuardianAlert"
+        - type: object
+          properties:
+            alertValue:
+              $ref: "#/components/schemas/MeasuredValue"
+            attemptedValue:
+              $ref: "#/components/schemas/MeasuredValue"
+            thresholdViolated:
+              $ref: "#/components/schemas/MeasuredValue"
+            direction:
+              $ref: "#/components/schemas/GuardianAlertDirection"
+            nextAction:
+              type: string
+              nullable: true
+              example: "N/A"
+            modelVersion:
+              type: string
+              nullable: true
+              example: "GUARDIAN-MODEL-1.0"
+            configurationVersion:
+              type: string
+              nullable: true
+              example: "GUARDIAN-CONFIG-1.0"
+            relatedLimitEventId:
+              type: string
+              nullable: true
+              example: "LE-10001"
+            relatedDoseRateChangeEventId:
+              type: string
+              nullable: true
+              example: "DRC-10001"
+            infusionStoryReference:
+              $ref: "#/components/schemas/InfusionStoryReference"
+            sourceEventReference:
+              $ref: "#/components/schemas/SourceEventReference"
+
+    GuardianAlertTooltip:
+      type: object
+      required:
+        - guardianAlertId
+      properties:
+        guardianAlertId:
+          type: string
+          example: "GA-10001"
+        timestamp:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T10:35:00Z"
+        advisoryEvent:
+          type: string
+          nullable: true
+          example: "IQ Guardian Advisory Event"
+        alertValue:
+          $ref: "#/components/schemas/MeasuredValue"
+        attemptedValue:
+          $ref: "#/components/schemas/MeasuredValue"
+        thresholdViolated:
+          $ref: "#/components/schemas/MeasuredValue"
+        nextAction:
+          type: string
+          nullable: true
+          example: "N/A"
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/TooltipField"
+
+    GuardianAlertInsight:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "DRUG-HEPARIN"
+        name:
+          type: string
+          example: "Heparin"
+        insightType:
+          type: string
+          enum:
+            - HIGH_FREQUENCY_ALERT_PATTERN
+            - FEEDBACK_PATTERN
+            - ALERT_DISTRIBUTION_PATTERN
+          example: "HIGH_FREQUENCY_ALERT_PATTERN"
+        description:
+          type: string
+          example: "Guardian alerts are concentrated in the selected filter population."
+        totalGuardianAlerts:
+          type: integer
+          minimum: 0
+          example: 250
+
+    InfusionStoryReference:
+      type: object
+      properties:
+        infusionId:
+          type: string
+          nullable: true
+          example: "INF-123"
+        href:
+          type: string
+          nullable: true
+          example: "/api/cqi/v1/infusion-stories/INF-123"
+        markerId:
+          type: string
+          nullable: true
+          example: "MKR-GA-10001"
+
+    MeasuredValue:
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+          nullable: true
+          example: 12.5
+        unit:
+          type: string
+          nullable: true
+          example: "mL/hr"
+        display:
+          type: string
+          nullable: true
+          example: "+12.5 mL/hr"
+
+    SourceEventReference:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+          nullable: true
+          example: "GUARDIAN"
+        sourceEventId:
+          type: string
+          nullable: true
+          example: "GUARDIAN-EVT-9001"
+        eventCode:
+          type: string
+          nullable: true
+          example: "STEP_RATE"
+
+    TooltipField:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Alert Value"
+        value:
+          type: string
+          example: "12.5 mL/hr"
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when count is expensive.
+          example: 1250
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "occurredAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    GuardianAlertCode:
+      type: string
+      enum:
+        - UNCOMMON_DRUG
+        - STEP_RATE
+        - VTBI
+        - OTHER
+        - UNKNOWN
+
+    GuardianAlertDirection:
+      type: string
+      enum:
+        - UPPER
+        - LOWER
+        - INCREASE
+        - DECREASE
+        - UNKNOWN
+
+    GuardianFeedbackValue:
+      type: string
+      enum:
+        - USEFUL
+        - NOT_USEFUL
+        - UNKNOWN
+        - NOT_PROVIDED
+
+    GuardianAlertGroupBy:
+      type: string
+      enum:
+        - ALERT_CODE
+        - DRUG_LIBRARY_VERSION
+        - CARE_AREA
+        - DRUG
+        - PUMP_TYPE
+        - DEVICE
+        - ENTERPRISE_HIERARCHY
+        - FEEDBACK_VALUE
+        - MODEL_VERSION
+        - CONFIGURATION_VERSION
+
+    TrendGranularity:
+      type: string
+      enum:
+        - DAILY
+        - WEEKLY
+        - MONTHLY
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ExportFormat:
+      type: string
+      enum:
+        - CSV
+        - XLSX
+        - JSON
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_GUARDIAN_ALERT_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid Guardian alert query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"

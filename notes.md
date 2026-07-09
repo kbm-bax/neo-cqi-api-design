@@ -49,9 +49,9 @@ Future CQI Capabilities (Long Term)
 ```
 
 
-# Neo CQI Domain Concepts
+# Domain Concepts
 
-## Current CQI Domain Concepts
+## Current Domain Concepts
 ```text
 
 Customer / Site / Tenant
@@ -69,6 +69,11 @@ Limit event
 Guardian event
 Pump Event History Log Event
 Dose rate change
+
+```
+
+## Current CQI Specific Domain Concepts
+```text
 Report
 Filter
 Export
@@ -76,14 +81,13 @@ User preference
 Data processing status
 
 ```
-
-## Future CQI Domain Concepts (Short Term)
+## Future Domain Concepts (Short Term)
 ```text
 
 Alarm
 Flow Rate
-Replication Config
-Replication Data Payload
+Data Replication Config
+Data Replication Payload
 Comparator Data For PeerVue
 Seed Data For PeerVue
 Care Area Mapping Data
@@ -91,6 +95,7 @@ PeerVue Configurations
 Drug Library Feedback
 DoseIQ Configurations
 Pump Utilization Details
+Pump Location Details
 DeviceVue Configurations
 CQI Usage Details
 New Guardian Report Details

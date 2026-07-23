@@ -51,29 +51,37 @@ Future CQI Capabilities (Long Term)
 
 # Domain Concepts
 
-## Current Domain Concepts
+<table bgcolor="green">
+<tr>
+<td>💡</td>
+<td>
+<strong><i>Notes on Domain Driven Design Approach<i></strong><br/><br/>
+<i>We have identified domains (core and related ones) and sub-domains (which are
+bounded contexts) in which these domains are being viewed/operated upon. Based
+on this, the API design will emanate.<i>
+</td>
+</tr>
+</table>
+
+
+## Current Infusion Therapy Specific Domain Concepts
 ```text
 
 Customer / Site / Tenant
-Enterprise hierarchy
+Distribution Enterprise hierarchy
 Device
-Pump type
 Drug library
-Drug library version
-Care area
+Infusion Care area
 Drug
 Infusion
-Infusion event
-Programming event
-Limit event
 Guardian event
 Pump Event History Log Event
-Dose rate change
 
 ```
 
 ## Current CQI Specific Domain Concepts
 ```text
+
 Report
 Filter
 Export
@@ -84,8 +92,6 @@ Data processing status
 ## Future Domain Concepts (Short Term)
 ```text
 
-Alarm
-Flow Rate
 Data Replication Config
 Data Replication Payload
 Comparator Data For PeerVue
@@ -94,36 +100,154 @@ Care Area Mapping Data
 PeerVue Configurations
 Drug Library Feedback
 DoseIQ Configurations
-Pump Utilization Details
-Pump Location Details
 DeviceVue Configurations
 CQI Usage Details
-New Guardian Report Details
-Guardian Summary Details
-Guardian Dose Rate Details
-Guardian Flow Rate Details
-Guardian Concentration Details
-Guardian Dose Rate Step Change Details
-Guardian Patient Weight Details
-Guardian Uncommon Drug Details
-Guardian Limit Analysis
-Guardian Deep Dive Details
-Guardian Graph Details
-Guardian Notes Details
-
 ```
 
 ## Future CQI Domain Concepts (Long Term)
 ```text
 
-TBD
+TBD if additional Domains are needed
 
 ```
 
+---
+---
 
+# Domain Driven Design Diagram
+
+The **Infusion Domain** is the core domain of the CQI platform. The surrounding
+high-level domains (Customer/Site/Tenant, Device, Drug Library, and Guardian) are
+supporting/generic domains that provide context, reference data, and signals the
+core Infusion Domain depends on. Each high-level domain is decomposed into its
+bounded contexts (subdomains).
+
+```mermaid
+flowchart LR
+    classDef core fill:#0b5394,stroke:#052a4f,stroke-width:2px,color:#ffffff;
+    classDef supporting fill:#e8eef7,stroke:#0b5394,stroke-width:1px,color:#0b2038;
+    classDef domainhdr fill:#0b5394,stroke:#052a4f,stroke-width:2px,color:#ffffff;
+    classDef supdomainhdr fill:#c9d8ee,stroke:#0b5394,stroke-width:1px,color:#0b2038;
+    classDef future_supporting fill:#cfe123,stroke:#0b5394,stroke-width:1px,color:#0b2038;
+    classDef future_supdomainhdr fill:#8080ff,stroke:#0b5394,stroke-width:1px,color:#0b2038;
+
+    %% ============ CORE DOMAIN (top) ============
+    CORE(["🎯 Infusion Domain "]):::domainhdr
+
+    INF_LIMITS["Limits<br/>(hard, soft limits)"]:::core
+    INF_DOSERATES["Dose Rates Changes"]:::core
+    INF_COMPLIANCE["DERS Compliance"]:::core
+    INF_STORY["Infusion Story"]:::core
+    INF_PROG["Programming Mode<br/>(Auto, Manual)"]:::core
+    INF_DELIVERY["Delivery Modes<br/>(AOT, VOT, Continuous)"]:::core
+    INF_CONC["Concentration Types<br/>(Fixed, Standard,<br/>Variable, mL mode)"]:::core
+    INF_BAG["Delivery Bag Configuration"]:::core
+    INF_BOLUS["Bolus Dose Configuration"]:::core
+    INF_LOADING["Loading Dose Configuration"]:::core
+    INF_FLUSH["Line Flush Dose Configuration"]:::core
+    INF_KVO["KVO Dose Configuration"]:::core
+    INF_ALARMS["Alarms"]:::core
+
+    CORE --- INF_LIMITS 
+    CORE --- INF_DOSERATES
+    CORE --- INF_COMPLIANCE 
+    CORE --- INF_STORY 
+    CORE --- INF_PROG
+    CORE --- INF_DELIVERY 
+    CORE --- INF_BAG 
+    CORE --- INF_BOLUS 
+    CORE --- INF_LOADING
+    CORE --- INF_FLUSH 
+    CORE --- INF_KVO 
+    CORE --- INF_ALARMS
+    INF_DELIVERY --- INF_CONC
+
+    %% ============ SUPPORTING DOMAINS (feed into core) ============
+    CUST(["Customer / Site / Tenant Domain"]):::supdomainhdr
+    CUST_DETAILS["Customer Details"]:::supporting
+    CUST_ENTITLE["Entitlements"]:::supporting
+    
+    CUST --- CUST_DETAILS 
+    CUST --- CUST_ENTITLE
+
+    DEV(["Device Domain"]):::supdomainhdr
+    DEV_HIER["Distribution Enterprise Hierarchy"]:::supporting
+    DEV_UTIL["Device Utilization"]:::supporting
+    DEV_ASSOC["Device Association<br/>(location, demographics)"]:::supporting
+    DEV_LOGS["Device Logs (EHL)"]:::supporting
+    DEV_NET["Device Network Connectivity"]:::supporting
+    DEV_SW["Device Software Configuration"]:::supporting
+    DEV_TYPE["Device Type / Model"]:::supporting
+    
+    DEV --- DEV_HIER 
+    DEV --- DEV_UTIL 
+    DEV --- DEV_ASSOC 
+    DEV --- DEV_LOGS
+    DEV --- DEV_NET 
+    DEV --- DEV_SW 
+    DEV --- DEV_TYPE
+
+    DRUG(["Drug Library Domain"]):::supdomainhdr
+    DL_DRUG["Drug"]:::supporting
+    DL_CAREAREA["Care Area"]:::supporting
+    DL_VERSIONS["Drug Library Versions"]:::supporting
+    DL_MODIFIERS["Drug Modifiers"]:::supporting
+    
+    DRUG --- DL_DRUG 
+    DRUG --- DL_CAREAREA 
+    DRUG --- DL_VERSIONS 
+    DRUG --- DL_MODIFIERS
+
+    GRD(["Guardian Domain"]):::supdomainhdr
+    GRD_EVENTS["Guardian Events"]:::supporting
+    GRD --- GRD_EVENTS
+
+    %% ============ FUTURE SUPPORTING DOMAINS (feed into core) ============
+    CDR(["Data Replication Domain"]):::future_supdomainhdr
+    CDR_CONFIGS["Data Replication Configs"]:::future_supporting
+    CDR_PAYLOAD["Data Replication Paylod"]:::future_supporting
+    
+    CDR --- CDR_CONFIGS 
+    CDR --- CDR_PAYLOAD
+
+    PV_CONFIGS(["PeerVue Configs"]):::future_supdomainhdr
+    PV_SEED_DATA["PeerVue Seed Data Payload"]:::future_supporting
+    PV_OWN_DATA["PeerVue Own Data Paylod"]:::future_supporting
+    
+    PV_CONFIGS --- PV_SEED_DATA 
+    PV_CONFIGS --- PV_OWN_DATA
+
+    DIQ_CONFIGS(["DoseIQ Configs"]):::future_supdomainhdr
+    DL_FB["Drug Library Feedback/Insights"]:::future_supporting
+    
+    DIQ_CONFIGS --- DL_FB 
+
+    DV_CONFIGS(["DeviceVue Configs"]):::future_supdomainhdr
+    DV_DEVICE_INFO["Device Information"]:::future_supporting
+    
+    DV_CONFIGS --- DV_DEVICE_INFO
+
+    CQI_UA(["CQI Usage Analytics"]):::future_supdomainhdr
+    CQI_UA_DATA["Usage Analytics Insights"]:::future_supporting
+    
+    CQI_UA --- CQI_UA_DATA 
+
+     
+```
 
 ---
 ---
+
+
+<table bgcolor="red">
+<tr>
+<td>&#128458;</td>
+<td>
+<strong><i>@subyann, @kbm-bax and @Copilot we have to review/rewrite section from here again to retrofit our comments so far.<i>
+</td>
+</tr>
+</table>
+
 
 # Bounded Contexts
 
@@ -144,13 +268,13 @@ TBD
 ## For Future CQI (Short Term)
 | Bounded Context | Owns | Why it should be separate |
 | --- | --- | --- |
-| TBD | TBD | TDB |
+| TBD | TBD | TBD |
 
 
 ## For Future CQI (Long Term)
 | Bounded Context | Owns | Why it should be separate |
 | --- | --- | --- |
-| TBD | TBD | TDB |
+| TBD | TBD | TBD |
 
 # Recommended API Structure
 
@@ -206,7 +330,6 @@ Drug Library
 Drug Library Version
 Care Area
 Drug
-Pump Type
 Device Metadata
 Enterprise Hierarchy
 Location
@@ -215,7 +338,6 @@ Report Filter Metadata
 ##### Does NOT own:
 ```text
 Infusions
-Limit Events
 Guardian Events
 Reports
 Compliance Calculations
@@ -328,8 +450,6 @@ Enterprise Hierarchy
 
 ```text
 Infusion
-Infusion Events
-Programming Events
 
 ```
 
@@ -447,7 +567,7 @@ This would be the first bounded context implemented, because every other context
 
 ```text
 
-Limit Event
+Infusion Limit Event
 Soft Limit Event
 Hard Limit Event
 Spectrum Indirect Limit Event
@@ -670,8 +790,7 @@ GET  /api/cqi/v1/limits/exports/{exportId}
 ##### Owns:
 
 ```text
-
-Dose Rate Change Event
+Infusion Dose Rate Change
 Dose Rate Change Summary
 Dose Rate Change Breakdown
 Dose Rate Change Trend
@@ -938,7 +1057,6 @@ Reference Data Context
 Infusion Journey Context
 Limits Context
 Compliance Context
-Dose Rate Change Context
 Guardian Context
 Report Experience Context
 Export Context
@@ -1173,7 +1291,6 @@ Infusion Story Availability
 Reference Data Context
 Compliance Context
 Limits Context
-Dose Rate Change Context
 Device Usage Context
 Guardian Context
 Report Experience Context
@@ -1433,7 +1550,6 @@ Reference Data Context
 Infusion Story Context
 Limits Context
 Compliance Context
-Dose Rate Change Context
 Device Usage Context
 Report Experience Context
 Export Context

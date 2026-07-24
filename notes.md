@@ -68,40 +68,31 @@ on this, the API design will emanate.<i>
 ```text
 
 Customer / Site / Tenant
-Distribution Enterprise hierarchy
 Device
 Drug library
-Infusion Care area
-Drug
 Infusion
-Guardian event
-Pump Event History Log Event
+Guardian 
 
 ```
 
 ## Current CQI Specific Domain Concepts
 ```text
 
-Report
-Filter
-Export
-User preference
-Data processing status
+Reports Configurations
+CQI User Preferences
+Data Processing Status
+Data Replication Config
+Data Replication Payload
 
 ```
 ## Future Domain Concepts (Short Term)
 ```text
 
-Data Replication Config
-Data Replication Payload
-Comparator Data For PeerVue
-Seed Data For PeerVue
-Care Area Mapping Data
 PeerVue Configurations
-Drug Library Feedback
 DoseIQ Configurations
 DeviceVue Configurations
 CQI Usage Details
+
 ```
 
 ## Future CQI Domain Concepts (Long Term)
@@ -130,11 +121,13 @@ flowchart LR
     classDef supdomainhdr fill:#c9d8ee,stroke:#0b5394,stroke-width:1px,color:#0b2038;
     classDef future_supporting fill:#cfe123,stroke:#0b5394,stroke-width:1px,color:#0b2038;
     classDef future_supdomainhdr fill:#8080ff,stroke:#0b5394,stroke-width:1px,color:#0b2038;
+    classDef ops fill:#87A96B,stroke:#0b5394,stroke-width:1px,color:#0b2038;
+    classDef opsdomainhdr fill:#FFA500,stroke:#0b5394,stroke-width:1px,color:#0b2038;
 
     %% ============ CORE DOMAIN (top) ============
     CORE(["🎯 Infusion Domain "]):::domainhdr
 
-    INF_LIMITS["Limits<br/>(hard, soft limits)"]:::core
+    INF_LIMITS["Limit Events<br/>(hard, soft limits)"]:::core
     INF_DOSERATES["Dose Rates Changes"]:::core
     INF_COMPLIANCE["DERS Compliance"]:::core
     INF_STORY["Infusion Story"]:::core
@@ -147,6 +140,7 @@ flowchart LR
     INF_FLUSH["Line Flush Dose Configuration"]:::core
     INF_KVO["KVO Dose Configuration"]:::core
     INF_ALARMS["Alarms"]:::core
+    INF_EVENTS["Events"]:::core
 
     CORE --- INF_LIMITS 
     CORE --- INF_DOSERATES
@@ -160,6 +154,7 @@ flowchart LR
     CORE --- INF_FLUSH 
     CORE --- INF_KVO 
     CORE --- INF_ALARMS
+    CORE --- INF_EVENTS
     INF_DELIVERY --- INF_CONC
 
     %% ============ SUPPORTING DOMAINS (feed into core) ============
@@ -177,6 +172,8 @@ flowchart LR
     DEV_LOGS["Device Logs (EHL)"]:::supporting
     DEV_NET["Device Network Connectivity"]:::supporting
     DEV_SW["Device Software Configuration"]:::supporting
+    DEV_MD["Device Meta Data"]:::supporting
+
     DEV_TYPE["Device Type / Model"]:::supporting
     
     DEV --- DEV_HIER 
@@ -185,6 +182,7 @@ flowchart LR
     DEV --- DEV_LOGS
     DEV --- DEV_NET 
     DEV --- DEV_SW 
+    DEV --- DEV_MD
     DEV --- DEV_TYPE
 
     DRUG(["Drug Library Domain"]):::supdomainhdr
@@ -202,13 +200,14 @@ flowchart LR
     GRD_EVENTS["Guardian Events"]:::supporting
     GRD --- GRD_EVENTS
 
-    %% ============ FUTURE SUPPORTING DOMAINS (feed into core) ============
-    CDR(["Data Replication Domain"]):::future_supdomainhdr
-    CDR_CONFIGS["Data Replication Configs"]:::future_supporting
-    CDR_PAYLOAD["Data Replication Paylod"]:::future_supporting
+    CDR(["Data Replication Domain"]):::supdomainhdr
+    CDR_CONFIGS["Data Replication Configs"]:::supporting
+    CDR_PAYLOAD["Data Replication Paylod"]:::supporting
     
     CDR --- CDR_CONFIGS 
     CDR --- CDR_PAYLOAD
+
+    %% ============ FUTURE SUPPORTING DOMAINS (feed into core) ============
 
     PV_CONFIGS(["PeerVue Configs"]):::future_supdomainhdr
     PV_SEED_DATA["PeerVue Seed Data Payload"]:::future_supporting
@@ -232,12 +231,70 @@ flowchart LR
     
     CQI_UA --- CQI_UA_DATA 
 
+    %% ============ SUPPORTING CQI OPERATIONAL DOMAINS ============
+
+    RPT_CONFIGS(["Reports Configurations"]):::opsdomainhdr
+    RPT_FILTERS["Reports Custom/Saved Filters"]:::ops
+    RPT_EXPORT["Reports Exports Configurations"]:::ops
+    
+    RPT_CONFIGS --- RPT_FILTERS 
+    RPT_CONFIGS --- RPT_EXPORT
+
+    CQI_USER_CONFIGS(["CQI User Preferences"]):::opsdomainhdr
+    CQI_USER_PERS["Personalizations like Language/Locate, etc"]:::ops
+    
+    CQI_USER_CONFIGS --- CQI_USER_PERS 
+
+    DATA_PROC(["Data Processing Status"]):::opsdomainhdr
+    DATA_PIPELINES["Data Pipelines Configurations"]:::ops
+    DATA_SCHD_JOBS["Scheduled Jobs Configurations"]:::ops
+    
+    DATA_PROC --- DATA_PIPELINES 
+    DATA_PROC --- DATA_SCHD_JOBS
+
+
+    DATA_REPL(["Data Replication Config"]):::opsdomainhdr
+    DATA_PAYL["Data Replication Payload"]:::ops
+    
+    DATA_REPL --- DATA_PAYL 
+
+    
+
      
 ```
 
 ---
 ---
 
+
+# Bounded Contexts
+
+## For Current CQI
+
+| Bounded Context | Owns Domains | Why it should be separate |
+| --- | --- | --- |
+| Reference Data Context | Drug Library, Device.DeviceType/Model, Device.Metadata, Device.DistributionEnterpriseHierarchy | These are filters and dimensions used across many reports. |
+| Infusion Journey Context | Infusion.InsufionStory | Infusion story is a pictorial trace depciting history of an infusion as it happened. | 
+| Infusions Reporting Context | Infusion | Compliance Reporting, Limits Reporting, Dose Rate Changes Reporting, Future: Alarms Reporting, Guardian Reporting |
+| Device Usage Context | Device  | Device Usage Reporting. |
+| Report Experience Context | Report Configurations, CQI User Preferences | Current CQI UI documentation includes user preference APIs, saved filters, sorting, paging, and export-oriented workflows. |
+| Data Operations Context | Data Processing Status, Data Replication Config | CQI FMEA and known failure-mode notes call out schema drift, retry, observability, rollback, duplicate handling, dead-letter/invalid messages, out-of-order message risks, Data Replication and Disaster Recovery Mechanisms. |
+
+
+## For Future CQI (Short Term)
+| Bounded Context | Owns | Why it should be separate |
+| --- | --- | --- |
+| TBD | TBD | TBD |
+| CQI Usage Analytics Context | CQI Usage Analytics | User Journeys, Usage feedbacks. |
+| PeerVue Context | PeerVue Configs | PeerVue specific CQI Data needed for Seed Comparator data and Individual(Self) Data for uploading to PeerVue |
+| DeviceVue Context | DeviceVue Configs | Device Information needed for DeviceVue enhancements like Device Infusion State, Network Connectivity, etc. |
+| DoseIQ Context | DoseIQ Configs | Recommendation of Drug Library Configurations like limits values |
+
+
+## For Future CQI (Long Term)
+| Bounded Context | Owns | Why it should be separate |
+| --- | --- | --- |
+| TBD | TBD | TBD |
 
 <table bgcolor="red">
 <tr>
@@ -247,34 +304,6 @@ flowchart LR
 </td>
 </tr>
 </table>
-
-
-# Bounded Contexts
-
-## For Current CQI
-
-| Bounded Context | Owns | Why it should be separate |
-| --- | --- | --- |
-| Reference Data Context | Drug library, drug library version, care area, drug, pump type, device metadata, enterprise hierarchy | These are filters and dimensions used across many reports. Recent Neo-CQI work added drug library, care area, and drug details through ingestion, bronze-to-gold movement, and CQIQUERY API updates. |
-| Infusion Journey Context | Infusion, infusion lifecycle, infusion story, event sequence | Infusion story is a user-facing CQI concept already present in the current CQI API/UI design. | 
-| Compliance Reporting Context | Compliance summaries, compliance infusions, compliance details | Compliance report is an explicit CQI report area in current UI/API documentation. |
-| Limit & Alert Context | Soft limit, hard limit, limit type, limit event, Guardian event, alert summary | Internal sources mention Guardian integration, limit-event leaderboard/report requirements, and Guardian events as part of CQI reporting. | 
-| Dose Rate Change Context | Dose rate changes, dose change details, dose rate change report filters | Existing API signatures include dose rate change care area and dose rate change infusion detail operations. | 
-| Device Usage Context | Device activity, utilization, pump availability, device usage report | CQI v3.3 requirements include Device Usage Report filters by drug library, device type, and enterprise group, plus reset and retained selections. |
-| Report Experience Context | Saved filters, preferences, report state, export requests | Current CQI UI documentation includes user preference APIs, saved filters, sorting, paging, and export-oriented workflows. |
-| Data Operations Context | Processing status, data quality, late messages, duplicates, invalid messages, lineage | CQI FMEA and known failure-mode notes call out schema drift, retry, observability, rollback, duplicate handling, dead-letter/invalid messages, and out-of-order message risks. |
-
-
-## For Future CQI (Short Term)
-| Bounded Context | Owns | Why it should be separate |
-| --- | --- | --- |
-| TBD | TBD | TBD |
-
-
-## For Future CQI (Long Term)
-| Bounded Context | Owns | Why it should be separate |
-| --- | --- | --- |
-| TBD | TBD | TBD |
 
 # Recommended API Structure
 

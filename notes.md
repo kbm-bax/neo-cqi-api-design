@@ -284,7 +284,6 @@ flowchart LR
 ## For Future CQI (Short Term)
 | Bounded Context | Owns | Why it should be separate |
 | --- | --- | --- |
-| TBD | TBD | TBD |
 | CQI Usage Analytics Context | CQI Usage Analytics | User Journeys, Usage feedbacks. |
 | PeerVue Context | PeerVue Configs | PeerVue specific CQI Data needed for Seed Comparator data and Individual(Self) Data for uploading to PeerVue |
 | DeviceVue Context | DeviceVue Configs | Device Information needed for DeviceVue enhancements like Device Infusion State, Network Connectivity, etc. |

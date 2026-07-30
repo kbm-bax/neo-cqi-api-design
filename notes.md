@@ -11,6 +11,7 @@ Current CQI Capabilities
 ├── Limit-event analysis
 ├── Dose-rate-change analysis
 ├── Device usage analysis
+├── Syringe usage analysis
 ├── Infusion story reconstruction
 ├── Guardian event reporting (limited)
 ├── Export and audit
@@ -43,7 +44,7 @@ Future CQI Capabilities (Long Term)
 ├── Predictive Maintianence for the Pumps
 ├── Reliability Metrics Collection and Aggregation for Pumps
 ├── AutoDocumentation capabilities
-├── Analysis of Pumps Events Data and EHL Data to determine usage patterns
+├── Analysis of Pumps Events Data and EHL Data to determine Pump usage patterns
 └── Alarm Burden/Fatigue Analytics
 
 ```
@@ -81,8 +82,7 @@ Guardian
 Reports Configurations
 CQI User Preferences
 Data Processing Status
-Data Replication Config
-Data Replication Payload
+Data Replication Configurations
 
 ```
 ## Future Domain Concepts (Short Term)
@@ -130,6 +130,7 @@ flowchart LR
     INF_LIMITS["Limit Events<br/>(hard, soft limits)"]:::core
     INF_DOSERATES["Dose Rates Changes"]:::core
     INF_COMPLIANCE["DERS Compliance"]:::core
+    INF_SYR["Syringe Usage"]:::core
     INF_STORY["Infusion Story"]:::core
     INF_PROG["Programming Mode<br/>(Auto, Manual)"]:::core
     INF_DELIVERY["Delivery Modes<br/>(AOT, VOT, Continuous)"]:::core
@@ -155,6 +156,7 @@ flowchart LR
     CORE --- INF_KVO 
     CORE --- INF_ALARMS
     CORE --- INF_EVENTS
+    CORE --- INF_SYR
     INF_DELIVERY --- INF_CONC
 
     %% ============ SUPPORTING DOMAINS (feed into core) ============
@@ -167,7 +169,7 @@ flowchart LR
 
     DEV(["Device Domain"]):::supdomainhdr
     DEV_HIER["Distribution Enterprise Hierarchy"]:::supporting
-    DEV_UTIL["Device Utilization"]:::supporting
+    DEV_UTIL["Device Usage"]:::supporting
     DEV_ASSOC["Device Association<br/>(location, demographics)"]:::supporting
     DEV_LOGS["Device Logs (EHL)"]:::supporting
     DEV_NET["Device Network Connectivity"]:::supporting
@@ -271,18 +273,18 @@ flowchart LR
 
 ## For Current CQI
 
-| Bounded Context | Owns Domains | Why it should be separate |
+| Bounded Context | Owns Domains | Helps in |
 | --- | --- | --- |
 | Reference Data Context | Drug Library, Device.DeviceType/Model, Device.Metadata, Device.DistributionEnterpriseHierarchy | These are filters and dimensions used across many reports. |
 | Infusion Journey Context | Infusion.InsufionStory | Infusion story is a pictorial trace depciting history of an infusion as it happened. | 
-| Infusions Reporting Context | Infusion | Compliance Reporting, Limits Reporting, Dose Rate Changes Reporting, Future: Alarms Reporting, Guardian Reporting |
+| Infusions Reporting Context | Infusion | Compliance Reporting, Limits Reporting, Dose Rate Changes Reporting, Syringe Usage Reporting,Future: Alarms Reporting, Guardian Reporting |
 | Device Usage Context | Device  | Device Usage Reporting. |
 | Report Experience Context | Report Configurations, CQI User Preferences | Current CQI UI documentation includes user preference APIs, saved filters, sorting, paging, and export-oriented workflows. |
 | Data Operations Context | Data Processing Status, Data Replication Config | CQI FMEA and known failure-mode notes call out schema drift, retry, observability, rollback, duplicate handling, dead-letter/invalid messages, out-of-order message risks, Data Replication and Disaster Recovery Mechanisms. |
 
 
 ## For Future CQI (Short Term)
-| Bounded Context | Owns | Why it should be separate |
+| Bounded Context | Owns | Helps in |
 | --- | --- | --- |
 | CQI Usage Analytics Context | CQI Usage Analytics | User Journeys, Usage feedbacks. |
 | PeerVue Context | PeerVue Configs | PeerVue specific CQI Data needed for Seed Comparator data and Individual(Self) Data for uploading to PeerVue |
@@ -291,7 +293,7 @@ flowchart LR
 
 
 ## For Future CQI (Long Term)
-| Bounded Context | Owns | Why it should be separate |
+| Bounded Context | Owns | Helps in |
 | --- | --- | --- |
 | TBD | TBD | TBD |
 

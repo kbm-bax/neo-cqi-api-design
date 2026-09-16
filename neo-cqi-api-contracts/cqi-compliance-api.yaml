@@ -746,3 +746,478 @@ components:
         page:
           $ref: "#/components/schemas/PageMetadata"
         dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    ComplianceInfusionDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ComplianceInfusion"
+        - type: object
+          properties:
+            programmedRate:
+              type: number
+              format: double
+              nullable: true
+              example: 25.0
+            programmedRateUnit:
+              type: string
+              nullable: true
+              example: "mL/hr"
+            dataFreshness:
+              $ref: "#/components/schemas/DataFreshness"
+
+    ComplianceEvaluationResponse:
+      type: object
+      required:
+        - infusionId
+        - complianceStatus
+        - dataFreshness
+      properties:
+        infusionId:
+          type: string
+          example: "INF-123"
+        complianceStatus:
+          $ref: "#/components/schemas/ComplianceStatus"
+        evaluatedAt:
+          type: string
+          format: date-time
+          example: "2026-07-07T04:00:00Z"
+        evaluatedAgainst:
+          $ref: "#/components/schemas/ComplianceEvaluatedAgainst"
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceFinding"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    ComplianceExportAcceptedResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        requestedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-07T10:30:00Z"
+        statusUrl:
+          type: string
+          nullable: true
+          example: "/api/cqi/v1/compliance/exports/EXP-1001"
+
+    ComplianceExportStatusResponse:
+      type: object
+      required:
+        - exportId
+        - status
+      properties:
+        exportId:
+          type: string
+          example: "EXP-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        exportFormat:
+          $ref: "#/components/schemas/ExportFormat"
+        requestedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-07T10:30:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-07T10:31:20Z"
+        rowCount:
+          type: integer
+          nullable: true
+          example: 3342
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if export is ready.
+        downloadExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-07T11:31:20Z"
+
+    ComplianceSummary:
+      type: object
+      required:
+        - totalInfusions
+        - compliantInfusions
+        - nonCompliantInfusions
+        - complianceRate
+      properties:
+        totalInfusions:
+          type: integer
+          minimum: 0
+          example: 120542
+        compliantInfusions:
+          type: integer
+          minimum: 0
+          example: 117200
+        nonCompliantInfusions:
+          type: integer
+          minimum: 0
+          example: 3342
+        unknownComplianceInfusions:
+          type: integer
+          minimum: 0
+          example: 0
+        complianceRate:
+          type: number
+          format: double
+          example: 97.23
+
+    ComplianceEvaluationContext:
+      type: object
+      properties:
+        evaluatedAgainstDrugLibraryVersionIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DLV-1002"
+        complianceDefinitionVersion:
+          type: string
+          nullable: true
+          example: "COMPLIANCE-RULESET-1.0"
+
+    ComplianceEvaluatedAgainst:
+      type: object
+      properties:
+        drugLibraryVersionId:
+          type: string
+          nullable: true
+          example: "DLV-1002"
+        careAreaId:
+          type: string
+          nullable: true
+          example: "CA-ICU"
+        drugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        complianceDefinitionVersion:
+          type: string
+          nullable: true
+          example: "COMPLIANCE-RULESET-1.0"
+
+    ComplianceBreakdownItem:
+      type: object
+      required:
+        - id
+        - name
+        - totalInfusions
+      properties:
+        id:
+          type: string
+          example: "CA-ICU"
+        name:
+          type: string
+          example: "ICU"
+        totalInfusions:
+          type: integer
+          minimum: 0
+          example: 2000
+        compliantInfusions:
+          type: integer
+          minimum: 0
+          example: 1962
+        nonCompliantInfusions:
+          type: integer
+          minimum: 0
+          example: 38
+        unknownComplianceInfusions:
+          type: integer
+          minimum: 0
+          example: 0
+        complianceRate:
+          type: number
+          format: double
+          example: 98.1
+
+    ComplianceTrendPoint:
+      type: object
+      required:
+        - periodStart
+        - periodEnd
+        - totalInfusions
+      properties:
+        periodStart:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          example: "2026-01-01T23:59:59Z"
+        totalInfusions:
+          type: integer
+          minimum: 0
+          example: 3800
+        compliantInfusions:
+          type: integer
+          minimum: 0
+          example: 3700
+        nonCompliantInfusions:
+          type: integer
+          minimum: 0
+          example: 100
+        complianceRate:
+          type: number
+          format: double
+          example: 97.37
+
+    ComplianceInfusion:
+      type: object
+      required:
+        - infusionId
+        - complianceStatus
+        - startedAt
+      properties:
+        infusionId:
+          type: string
+          example: "INF-123"
+        deviceId:
+          type: string
+          nullable: true
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        drugLibraryVersionId:
+          type: string
+          nullable: true
+          example: "DLV-1002"
+        careAreaId:
+          type: string
+          nullable: true
+          example: "CA-ICU"
+        careAreaName:
+          type: string
+          nullable: true
+          example: "ICU"
+        drugId:
+          type: string
+          nullable: true
+          example: "DRUG-HEPARIN"
+        drugName:
+          type: string
+          nullable: true
+          example: "Heparin"
+        complianceStatus:
+          $ref: "#/components/schemas/ComplianceStatus"
+        startedAt:
+          type: string
+          format: date-time
+          example: "2026-01-02T10:30:00Z"
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T12:10:00Z"
+
+    ComplianceFinding:
+      type: object
+      required:
+        - findingCode
+        - description
+      properties:
+        findingCode:
+          type: string
+          example: "PROGRAMMED_VALUE_OUTSIDE_POLICY"
+        severity:
+          $ref: "#/components/schemas/ComplianceFindingSeverity"
+        description:
+          type: string
+          example: "Programmed value was outside the configured drug library policy."
+        occurredAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T10:35:00Z"
+        relatedEventReference:
+          type: string
+          nullable: true
+          example: "PUMP-EVT-9001"
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-07T04:00:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260707-040000"
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when count is expensive.
+          example: 1250
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "startedAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    ComplianceStatus:
+      type: string
+      enum:
+        - COMPLIANT
+        - NON_COMPLIANT
+        - UNKNOWN
+
+    ComplianceFindingSeverity:
+      type: string
+      enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+        - CRITICAL
+        - UNKNOWN
+
+    ComplianceGroupBy:
+      type: string
+      enum:
+        - DRUG_LIBRARY_VERSION
+        - CARE_AREA
+        - DRUG
+        - PUMP_TYPE
+        - DEVICE
+        - ENTERPRISE_HIERARCHY
+        - COMPLIANCE_STATUS
+
+    TrendGranularity:
+      type: string
+      enum:
+        - DAILY
+        - WEEKLY
+        - MONTHLY
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ExportFormat:
+      type: string
+      enum:
+        - CSV
+        - XLSX
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - PENDING
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_COMPLIANCE_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid compliance query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+

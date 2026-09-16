@@ -278,7 +278,7 @@ flowchart LR
 | Reference Data Context | Drug Library, Device.DeviceType/Model, Device.Metadata, Device.DistributionEnterpriseHierarchy | These are filters and dimensions used across many reports. |
 | Infusion Journey Context | Infusion.InsufionStory | Infusion story is a pictorial trace depciting history of an infusion as it happened. | 
 | Infusions Reporting Context | Infusion | Compliance Reporting, Limits Reporting, Dose Rate Changes Reporting, Syringe Usage Reporting,Future: Alarms Reporting, Guardian Reporting |
-| Device Usage Context | Device  | Device Usage Reporting. |
+| Device Usage Context | Device  | Device Usage Reporting, Pump Event History Log (EHL) collection, aggregation, and download. |
 | Report Experience Context | Report Configurations, CQI User Preferences | Current CQI UI documentation includes user preference APIs, saved filters, sorting, paging, and export-oriented workflows. |
 | Data Operations Context | Data Processing Status, Data Replication Config | CQI FMEA and known failure-mode notes call out schema drift, retry, observability, rollback, duplicate handling, dead-letter/invalid messages, out-of-order message risks, Data Replication and Disaster Recovery Mechanisms. |
 
@@ -338,10 +338,12 @@ CQI semantic projections / materialized views
 * [limits-api](neo-cqi-api-contracts/cqi-limits-api.yaml)
 * [dose-rate-change-api](neo-cqi-api-contracts/cqi-dose-rate-changes-api.yaml)
 * [device-usage-api](neo-cqi-api-contracts/cqi-device-usage-api.yaml)
+* [syringe-usage-api](neo-cqi-api-contracts/cqi-syringe-usage-api.yaml)
 * [infusion-story-api](neo-cqi-api-contracts/cqi-infusion-story-api.yaml)
 * [guardian-alert-api](neo-cqi-api-contracts/cqi-guardian-alert-api.yaml)
 * [report-preferences-api](neo-cqi-api-contracts/cqi-report-preferences-api.yaml)
 * [data-quality-api](neo-cqi-api-contracts/cqi-data-quality-api.yaml)
+* [device-logs-api](neo-cqi-api-contracts/cqi-device-logs-api.yaml)
 
 ## For Future CQI (Short Term)
 TBD
@@ -1291,6 +1293,222 @@ GET  /api/cqi/v1/device-usage/exports/{exportId}
 ```
 
 
+### syringe-usage-api
+
+#### Responsibilities
+##### Owns:
+
+```text
+Syringe Usage Infusion
+Syringe Size Mix
+Syringe Brand Mix
+Syringe Utilization
+Syringe Change Event
+Empty Syringe Event
+Near Empty Syringe Event
+Syringe Usage Summary
+Syringe Usage Breakdown
+Syringe Usage Trend
+Syringe Size Distribution
+Syringe Usage Export View
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Infusion Journey Context
+Limits Context
+Compliance Context
+Dose Rate Change Context
+Guardian Context
+Device Usage Context
+Report Experience Context
+Export Context
+Data Operations / Data Quality Context
+Lakehouse / Storage Context
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+
+DrugLibraryVersion
+CareArea
+Drug
+PumpType
+Device
+EnterpriseHierarchyNode
+
+```
+
+
+###### from Infusion Journey Context:
+
+```text
+
+Infusion
+InfusionStarted
+InfusionCompleted
+SyringeLoaded
+SyringeChanged
+VolumeInfusedUpdated
+RemainingVolumeUpdated
+
+```
+
+###### from Pump/Event Normalization Context:
+
+```text
+
+SyringeSize
+SyringeBrand
+SyringeModel
+ProgrammedVolume
+EmptySyringeEvent
+NearEmptySyringeEvent
+SourceEventReference
+
+```
+
+###### from Data Operations / Data Quality Context:
+
+```text
+
+DataFreshness
+Watermark
+DataQualityIndicator
+ProcessingStatus
+
+```
+
+##### Domain Model
+
+```text
+
+Core model
+
+SyringeUsageInfusion
+ ├─ syringeUsageInfusionId
+ ├─ infusionId
+ ├─ startedAt
+ ├─ endedAt
+ ├─ syringeSizeMl
+ ├─ syringeBrand
+ ├─ syringeModel
+ ├─ programmedVolumeMl
+ ├─ volumeInfusedMl
+ ├─ remainingVolumeMl
+ ├─ syringeUtilizationPercent
+ ├─ syringeChangeCount
+ ├─ emptySyringeEventCount
+ ├─ nearEmptyEventCount
+ ├─ drugLibraryVersionId
+ ├─ careAreaId
+ ├─ drugId
+ ├─ deviceId
+ ├─ pumpType
+ └─ sourceEventReference
+
+```
+
+```text
+
+Analytical model
+
+SyringeUsageSummary
+ ├─ totalSyringeInfusions
+ ├─ uniqueDeviceCount
+ ├─ uniqueSyringeSizeCount
+ ├─ totalVolumeInfusedMl
+ ├─ averageSyringeUtilizationPercent
+ ├─ syringeChangeCount
+ ├─ emptySyringeEventCount
+ ├─ nearEmptyEventCount
+ └─ infusionsWithSyringeChangeCount
+
+```
+
+```text
+
+Breakdown Model
+SyringeUsageBreakdown
+ ├─ groupBy
+ └─ items[]
+      ├─ id
+      ├─ name
+      ├─ totalSyringeInfusions
+      ├─ totalVolumeInfusedMl
+      ├─ averageSyringeUtilizationPercent
+      ├─ syringeChangeCount
+      └─ emptySyringeEventCount
+
+```
+
+```text
+
+Detail model
+SyringeUsageInfusionDetail
+ ├─ syringeUsageInfusionId
+ ├─ infusionId
+ ├─ startedAt
+ ├─ endedAt
+ ├─ drugName
+ ├─ careAreaName
+ ├─ deviceSerialNumber
+ ├─ pumpType
+ ├─ syringeSizeMl
+ ├─ syringeBrand
+ ├─ syringeModel
+ ├─ programmedVolumeMl
+ ├─ volumeInfusedMl
+ ├─ remainingVolumeMl
+ ├─ syringeUtilizationPercent
+ ├─ syringeChangeCount
+ ├─ canShowInfusionStory
+ └─ sourceEventReference
+
+```
+
+##### Events Owned by this API
+
+```text
+
+SyringeUsageInfusionRecorded
+SyringeChangeRecorded
+EmptySyringeEventRecorded
+NearEmptySyringeEventRecorded
+SyringeUsageSummaryCalculated
+SyringeUsageBreakdownCalculated
+SyringeUsageTrendCalculated
+SyringeSizeDistributionCalculated
+SyringeUsageExportRequested
+SyringeUsageDataRefreshed
+
+```
+
+##### Final API Portfolio
+
+```text
+
+POST /api/cqi/v1/syringe-usage/summary-query
+POST /api/cqi/v1/syringe-usage/breakdown-query
+POST /api/cqi/v1/syringe-usage/trends-query
+POST /api/cqi/v1/syringe-usage/size-distribution-query
+POST /api/cqi/v1/syringe-usage/infusions-query
+GET  /api/cqi/v1/syringe-usage/infusions/{infusionId}
+GET  /api/cqi/v1/syringe-usage/infusions/{infusionId}/infusion-story-reference
+POST /api/cqi/v1/syringe-usage/exports
+GET  /api/cqi/v1/syringe-usage/exports/{exportId}
+
+```
+
+
 ### infusion-story-api
 
 #### Responsibilities
@@ -2108,8 +2326,10 @@ ComplianceProjectionStatus
 LimitsProjectionStatus
 DoseRateChangeProjectionStatus
 DeviceUsageProjectionStatus
+SyringeUsageProjectionStatus
 GuardianAlertProjectionStatus
 InfusionStoryProjectionStatus
+DeviceLogsProjectionStatus
 
 
 ```
@@ -2349,6 +2569,195 @@ GET  /api/cqi/v1/data-quality/reconciliations/{reconciliationId}
 POST /api/cqi/v1/data-quality/quality-gates/evaluate
 GET  /api/cqi/v1/data-quality/quality-gates/{qualityGateId}
 
+
+```
+
+
+### device-logs-api
+
+#### Responsibilities
+##### Owns:
+
+```text
+
+Device Log File (EHL)
+Device Log Collection
+Device Log Aggregation
+Device Log Download
+Device Log Coverage Summary
+Device Log File Metadata
+Device Log Retention Status
+
+```
+
+
+##### Does NOT own:
+
+```text
+
+Reference Data Context
+Infusion Journey Context
+Compliance Context
+Limits Context
+Dose Rate Change Context
+Syringe Usage Context
+Guardian Context
+Device Usage Analytics Context
+Report Experience Context
+Raw Pump Event Ingestion Context
+Lakehouse / Storage Context
+Clinical interpretation of EHL event contents
+
+```
+
+##### Consumes
+###### from Reference Data Context:
+
+```text
+
+Device
+PumpType
+DeviceModel
+EnterpriseHierarchyNode
+
+```
+
+
+###### from Device Management / IQE source systems Context:
+
+```text
+
+Device registration metadata
+Pump Event History Log file availability
+Collection request acknowledgement
+
+```
+
+
+###### from Pump/Event Ingestion Context:
+
+```text
+
+EhlFileReceived
+EhlFileRejected
+CollectionCompleted
+CollectionFailed
+
+```
+
+###### from Data Operations / Data Quality Context:
+
+```text
+
+DataFreshness
+Watermark
+ProcessingStatus
+DataQualityIndicator
+
+```
+
+##### Domain Model
+
+```text
+
+Core model
+DeviceLogFile
+ ├─ fileId
+ ├─ deviceId
+ ├─ deviceSerialNumber
+ ├─ pumpType
+ ├─ fileName
+ ├─ fileFormat
+ ├─ fileSizeBytes
+ ├─ checksumSha256
+ ├─ status
+ ├─ periodStart
+ ├─ periodEnd
+ ├─ collectedAt
+ ├─ collectionId
+ ├─ aggregationId
+ └─ sourceSystem
+
+```
+
+```text
+
+Collection model
+DeviceLogCollection
+ ├─ collectionId
+ ├─ deviceId
+ ├─ status
+ ├─ requestedAt
+ ├─ startedAt
+ ├─ completedAt
+ ├─ fileCount
+ ├─ totalSizeBytes
+ └─ failureReason
+
+```
+
+```text
+
+Aggregation model
+DeviceLogAggregation
+ ├─ aggregationId
+ ├─ name
+ ├─ scopeType
+ ├─ deviceCount
+ ├─ fileCount
+ ├─ totalSizeBytes
+ ├─ status
+ ├─ periodStart
+ ├─ periodEnd
+ └─ fileIds[]
+
+```
+
+```text
+
+Coverage model
+DeviceLogSummary
+ ├─ deviceCount
+ ├─ devicesWithLogs
+ ├─ devicesMissingLogs
+ ├─ fileCount
+ ├─ totalSizeBytes
+ ├─ collectionInProgressCount
+ ├─ failedCollectionCount
+ └─ lastCollectedAt
+
+```
+
+##### Events Owned by this API
+
+```text
+
+DeviceLogFileCollected
+DeviceLogFileRejected
+DeviceLogCollectionStarted
+DeviceLogCollectionCompleted
+DeviceLogCollectionFailed
+DeviceLogAggregationBuilt
+DeviceLogDownloadRequested
+DeviceLogDownloadCompleted
+DeviceLogCoverageCalculated
+DeviceLogDataRefreshed
+
+```
+
+##### Final API Portfolio
+
+```text
+
+POST /api/cqi/v1/device-logs/summary-query
+POST /api/cqi/v1/device-logs/files-query
+GET  /api/cqi/v1/device-logs/files/{fileId}
+POST /api/cqi/v1/device-logs/collections-query
+GET  /api/cqi/v1/device-logs/collections/{collectionId}
+POST /api/cqi/v1/device-logs/aggregations-query
+GET  /api/cqi/v1/device-logs/aggregations/{aggregationId}
+POST /api/cqi/v1/device-logs/downloads
+GET  /api/cqi/v1/device-logs/downloads/{downloadId}
 
 ```
 

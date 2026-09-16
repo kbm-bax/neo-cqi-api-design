@@ -10,11 +10,12 @@ info:
     Reporting, as named in the current CQI capabilities and bounded-context
     notes.
 
-    It uses only the shared CQI reporting envelope already defined by the
-    sibling infusion reports in this repository (filters, grouping, paging,
-    export, and data freshness). It does not define syringe-specific measures
-    or dimensions. Those fields are omitted until they are documented in the
-    design notes or source report.
+    It uses the shared CQI reporting envelope already defined by the sibling
+    infusion reports in this repository (filters, grouping, paging, export,
+    and data freshness), plus the confirmed syringe-report dimensions of
+    syringe brand and syringe size.
+
+    Other syringe-specific measures are omitted until they are documented.
 
     The API is storage-agnostic. It does not expose SQL, lakehouse zones,
     table names, partitions, or physical schema details.
@@ -30,11 +31,11 @@ tags:
   - name: Syringe Usage Summary
     description: Infusion-count summary for a selected population.
   - name: Syringe Usage Breakdown
-    description: Infusion counts grouped by shared CQI dimensions.
+    description: Infusion counts grouped by shared CQI dimensions plus syringe brand and size.
   - name: Syringe Usage Trends
     description: Infusion counts over time.
   - name: Syringe Usage Infusions
-    description: Infusion-level listing and detail using shared infusion identity fields.
+    description: Infusion-level listing and detail, including syringe brand and size.
   - name: Syringe Usage Exports
     description: Export syringe-usage report rows.
 
@@ -49,7 +50,7 @@ paths:
       description: |
         Returns the infusion count for a selected population.
 
-        Report-specific syringe measures are not included in this contract.
+        Filters include the confirmed syringe dimensions of brand and size.
       requestBody:
         required: true
         content:
@@ -70,6 +71,11 @@ paths:
                       - "CA-ICU"
                     pumpTypes:
                       - "SYR"
+                    syringeSizesMl:
+                      - 10
+                      - 50
+                    syringeBrands:
+                      - "BD"
       responses:
         "200":
           description: Syringe usage summary returned successfully.
@@ -101,8 +107,8 @@ paths:
       operationId: getSyringeUsageBreakdown
       summary: Get syringe usage breakdown
       description: |
-        Returns infusion counts grouped by a shared CQI dimension already used
-        by other Infusions Reporting APIs.
+        Returns infusion counts grouped by a shared CQI dimension or by a
+        confirmed syringe-report dimension (syringe size or syringe brand).
       requestBody:
         required: true
         content:
@@ -110,10 +116,20 @@ paths:
             schema:
               $ref: "#/components/schemas/SyringeUsageBreakdownRequest"
             examples:
-              byCareArea:
-                summary: Syringe usage breakdown by care area
+              bySyringeSize:
+                summary: Syringe usage breakdown by syringe size
                 value:
-                  groupBy: "CARE_AREA"
+                  groupBy: "SYRINGE_SIZE"
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    drugLibraryVersionIds:
+                      - "DLV-1002"
+              bySyringeBrand:
+                summary: Syringe usage breakdown by syringe brand
+                value:
+                  groupBy: "SYRINGE_BRAND"
                   filters:
                     dateRange:
                       from: "2026-01-01T00:00:00Z"
@@ -128,16 +144,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/SyringeUsageBreakdownResponse"
               examples:
-                success:
+                bySyringeSize:
                   value:
-                    groupBy: "CARE_AREA"
+                    groupBy: "SYRINGE_SIZE"
                     items:
-                      - id: "CA-ICU"
-                        name: "ICU"
+                      - id: "SIZE-10"
+                        name: "10 mL"
                         totalInfusions: 1800
-                      - id: "CA-ER"
-                        name: "Emergency"
+                      - id: "SIZE-50"
+                        name: "50 mL"
                         totalInfusions: 950
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+                bySyringeBrand:
+                  value:
+                    groupBy: "SYRINGE_BRAND"
+                    items:
+                      - id: "BRAND-BD"
+                        name: "BD"
+                        totalInfusions: 2100
+                      - id: "BRAND-TERUMO"
+                        name: "Terumo"
+                        totalInfusions: 650
                     dataFreshness:
                       asOf: "2026-07-08T10:30:00Z"
                       watermark: "wm-20260708-103000"
@@ -242,6 +271,8 @@ paths:
                         pumpType: "SYR"
                         careAreaName: "ICU"
                         drugName: "Heparin"
+                        syringeSizeMl: 50
+                        syringeBrand: "BD"
                         startedAt: "2026-01-02T10:35:00Z"
                     page:
                       pageNumber: 1
@@ -287,6 +318,8 @@ paths:
                       careAreaName: "ICU"
                       drugId: "DRUG-HEPARIN"
                       drugName: "Heparin"
+                      syringeSizeMl: 50
+                      syringeBrand: "BD"
                       startedAt: "2026-01-02T10:35:00Z"
                       endedAt: "2026-01-02T14:10:00Z"
                     dataFreshness:
@@ -326,6 +359,8 @@ paths:
                     - "deviceSerialNumber"
                     - "careAreaName"
                     - "drugName"
+                    - "syringeSizeMl"
+                    - "syringeBrand"
                     - "startedAt"
       responses:
         "202":
@@ -504,13 +539,16 @@ components:
             - "deviceSerialNumber"
             - "careAreaName"
             - "drugName"
+            - "syringeSizeMl"
+            - "syringeBrand"
             - "startedAt"
 
     SyringeUsageFilter:
       type: object
       description: |
         Shared CQI report filters already used by compliance, limits, and
-        dose-rate-change APIs. No syringe-specific filters are defined yet.
+        dose-rate-change APIs, plus confirmed syringe-report dimensions
+        of brand and size.
       properties:
         dateRange:
           $ref: "#/components/schemas/DateRange"
@@ -563,6 +601,24 @@ components:
             type: string
           example:
             - "EH-100"
+
+        syringeSizesMl:
+          type: array
+          items:
+            type: number
+            format: double
+          description: Confirmed syringe-report dimension. Syringe size in milliliters.
+          example:
+            - 10
+            - 50
+
+        syringeBrands:
+          type: array
+          items:
+            type: string
+          description: Confirmed syringe-report dimension.
+          example:
+            - "BD"
 
     DateRange:
       type: object
@@ -737,8 +793,8 @@ components:
     SyringeUsageInfusion:
       type: object
       description: |
-        Shared infusion identity fields used by other Infusions Reporting APIs.
-        Syringe-specific attributes are not defined in this contract.
+        Shared infusion identity fields used by other Infusions Reporting APIs,
+        plus confirmed syringe-report dimensions of brand and size.
       required:
         - infusionId
         - startedAt
@@ -778,6 +834,17 @@ components:
           type: string
           nullable: true
           example: "Heparin"
+        syringeSizeMl:
+          type: number
+          format: double
+          nullable: true
+          description: Confirmed syringe-report dimension. Syringe size in milliliters.
+          example: 50
+        syringeBrand:
+          type: string
+          nullable: true
+          description: Confirmed syringe-report dimension.
+          example: "BD"
         startedAt:
           type: string
           format: date-time
@@ -850,7 +917,9 @@ components:
 
     SyringeUsageGroupBy:
       type: string
-      description: Shared grouping dimensions from sibling Infusions Reporting APIs.
+      description: |
+        Shared grouping dimensions from sibling Infusions Reporting APIs,
+        plus confirmed syringe-report dimensions of brand and size.
       enum:
         - DRUG_LIBRARY_VERSION
         - CARE_AREA
@@ -858,6 +927,8 @@ components:
         - PUMP_TYPE
         - DEVICE
         - ENTERPRISE_HIERARCHY
+        - SYRINGE_SIZE
+        - SYRINGE_BRAND
 
     TrendGranularity:
       type: string

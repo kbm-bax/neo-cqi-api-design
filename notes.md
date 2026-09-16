@@ -1296,24 +1296,31 @@ GET  /api/cqi/v1/device-usage/exports/{exportId}
 ### syringe-usage-api
 
 The current CQI notes name **Syringe usage analysis** as a capability and place
-**Syringe Usage Reporting** in the Infusions Reporting Context. They do not
-define syringe-specific measures, dimensions, events, or report fields.
+**Syringe Usage Reporting** in the Infusions Reporting Context.
 
-This contract therefore reuses only:
+Confirmed syringe-report dimensions:
+
+- syringe size
+- syringe brand
+
+This contract therefore uses:
 
 - the Infusion entity owned by Infusions Reporting Context
 - shared CQI filters and group-by dimensions already used by compliance, limits,
   and dose-rate-change APIs
+- the confirmed syringe dimensions of size and brand
 - the summary / breakdown / trends / infusion list / export query shape used by
   those sibling reporting APIs
 
-Syringe-specific fields are intentionally omitted until they are documented.
+Other syringe-specific measures remain omitted until they are documented.
 
 #### Responsibilities
 ##### Owns:
 
 ```text
 Syringe Usage Reporting
+Syringe Size
+Syringe Brand
 ```
 
 
@@ -1385,10 +1392,12 @@ Infusion
  ├─ careAreaId
  ├─ drugId
  ├─ deviceId
- └─ pumpType
+ ├─ pumpType
+ ├─ syringeSizeMl
+ └─ syringeBrand
 
-Syringe-specific measures and dimensions
- └─ TBD — not defined in current CQI design notes
+Other syringe-specific measures
+ └─ TBD — not yet documented
 
 ```
 
@@ -1418,9 +1427,8 @@ GET  /api/cqi/v1/syringe-usage/exports/{exportId}
 
 ```text
 
-What measures does the current CQI syringe usage report actually return?
-What report-specific filters or group-by dimensions does it use?
-What infusion-level columns appear on the syringe usage grid and export?
+What measures, other than infusion count, does the current CQI syringe usage report return?
+What additional infusion-level columns appear on the syringe usage grid and export?
 
 ```
 

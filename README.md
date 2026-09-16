@@ -16,4 +16,18 @@ docker run -d -p 8080:8080 `
 
 ```
 
-Once the UI loads, you can swich out the api files to see other APIs.
+Once the UI loads, you can switch out the api files to see other APIs.
+
+Current CQI OpenAPI contracts in `neo-cqi-api-contracts/`:
+
+- `cqi-reference-data-api.yaml`
+- `cqi-compliance-api.yaml`
+- `cqi-limits-api.yaml`
+- `cqi-dose-rate-changes-api.yaml`
+- `cqi-device-usage-api.yaml`
+- `cqi-syringe-usage-api.yaml`
+- `cqi-infusion-story-api.yaml`
+- `cqi-guardian-alert-api.yaml`
+- `cqi-report-preferences-api.yaml`
+- `cqi-data-quality-api.yaml`
+- `cqi-device-logs-api.yaml`

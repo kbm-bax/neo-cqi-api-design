@@ -1,0 +1,1216 @@
+openapi: 3.0.3
+
+info:
+  title: CQI Device Logs API
+  version: 1.0.0
+  description: |
+    CQI Device Logs (EHL) API for Neo CQI.
+
+    This API provides collection, aggregation, discovery, and download of
+    pump Event History Log (EHL) files. It supports coverage summaries,
+    file metadata search, collection job status, aggregated packages,
+    and secure download of one or more log files.
+
+    The API is storage-agnostic. It does not expose SQL, lakehouse zones,
+    table names, partitions, or physical schema details. It does not parse
+    EHL contents into clinical report facts; those belong to other CQI
+    reporting APIs.
+
+servers:
+  - url: /api/cqi/v1
+    description: CQI API v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Device Log Summary
+    description: Coverage of collected EHL files across the device fleet.
+  - name: Device Log Files
+    description: Individual EHL file discovery and metadata.
+  - name: Device Log Collections
+    description: Collection jobs that gather EHL files from pumps.
+  - name: Device Log Aggregations
+    description: Aggregated EHL packages for a device, site, or date range.
+  - name: Device Log Downloads
+    description: Secure download of EHL files or aggregated packages.
+
+paths:
+
+  /device-logs/summary-query:
+    post:
+      tags:
+        - Device Log Summary
+      operationId: getDeviceLogSummary
+      summary: Get device log coverage summary
+      description: |
+        Returns collection coverage for Event History Log files, including
+        how many devices have recent logs, outstanding collections, and
+        total stored file volume.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceLogSummaryRequest"
+            examples:
+              default:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    pumpTypes:
+                      - "LVP"
+                      - "SYR"
+                    enterpriseHierarchyNodeIds:
+                      - "EH-100"
+      responses:
+        "200":
+          description: Device log summary returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogSummaryResponse"
+              examples:
+                success:
+                  value:
+                    summary:
+                      deviceCount: 240
+                      devicesWithLogs: 221
+                      devicesMissingLogs: 19
+                      fileCount: 1842
+                      totalSizeBytes: 958440320
+                      collectionInProgressCount: 4
+                      failedCollectionCount: 2
+                      lastCollectedAt: "2026-01-31T22:14:00Z"
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/files-query:
+    post:
+      tags:
+        - Device Log Files
+      operationId: searchDeviceLogFiles
+      summary: Search device log files
+      description: Returns EHL file metadata for discovery, aggregation, and download.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceLogFileQueryRequest"
+            examples:
+              byDevice:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    deviceSerialNumbers:
+                      - "SN001"
+                    fileStatuses:
+                      - "AVAILABLE"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+                  sort:
+                    field: "collectedAt"
+                    direction: "DESC"
+      responses:
+        "200":
+          description: Matching device log files.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogFileListResponse"
+              examples:
+                success:
+                  value:
+                    items:
+                      - fileId: "EHL-10001"
+                        deviceId: "DEV-100"
+                        deviceSerialNumber: "SN001"
+                        pumpType: "LVP"
+                        fileName: "SN001-20260102.ehl"
+                        fileFormat: "EHL"
+                        fileSizeBytes: 1048576
+                        status: "AVAILABLE"
+                        periodStart: "2026-01-02T00:00:00Z"
+                        periodEnd: "2026-01-02T23:59:59Z"
+                        collectedAt: "2026-01-03T01:12:00Z"
+                    page:
+                      pageNumber: 1
+                      pageSize: 50
+                      totalItems: 18
+                      hasMore: false
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/files/{fileId}:
+    get:
+      tags:
+        - Device Log Files
+      operationId: getDeviceLogFile
+      summary: Get device log file metadata
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          description: Device log file metadata returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogFileDetailResponse"
+              examples:
+                success:
+                  value:
+                    file:
+                      fileId: "EHL-10001"
+                      deviceId: "DEV-100"
+                      deviceSerialNumber: "SN001"
+                      pumpType: "LVP"
+                      deviceModel: "Spectrum IQ"
+                      fileName: "SN001-20260102.ehl"
+                      fileFormat: "EHL"
+                      fileSizeBytes: 1048576
+                      checksumSha256: "a3f1c9..."
+                      status: "AVAILABLE"
+                      periodStart: "2026-01-02T00:00:00Z"
+                      periodEnd: "2026-01-02T23:59:59Z"
+                      collectedAt: "2026-01-03T01:12:00Z"
+                      collectionId: "COL-2001"
+                      aggregationId: "AGG-3001"
+                      enterpriseHierarchyNodeId: "EH-100"
+                      enterpriseGroupName: "ICU East"
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/collections-query:
+    post:
+      tags:
+        - Device Log Collections
+      operationId: searchDeviceLogCollections
+      summary: Search device log collection jobs
+      description: Returns EHL collection jobs used to gather logs from pumps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceLogCollectionQueryRequest"
+            examples:
+              inProgress:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    collectionStatuses:
+                      - "IN_PROGRESS"
+                      - "FAILED"
+                  page:
+                    pageNumber: 1
+                    pageSize: 50
+      responses:
+        "200":
+          description: Matching device log collections.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogCollectionListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/collections/{collectionId}:
+    get:
+      tags:
+        - Device Log Collections
+      operationId: getDeviceLogCollection
+      summary: Get device log collection job
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      responses:
+        "200":
+          description: Device log collection returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogCollectionDetailResponse"
+              examples:
+                success:
+                  value:
+                    collection:
+                      collectionId: "COL-2001"
+                      deviceId: "DEV-100"
+                      deviceSerialNumber: "SN001"
+                      status: "COMPLETED"
+                      requestedAt: "2026-01-03T01:00:00Z"
+                      startedAt: "2026-01-03T01:01:00Z"
+                      completedAt: "2026-01-03T01:12:00Z"
+                      fileCount: 1
+                      totalSizeBytes: 1048576
+                      failureReason: null
+                    dataFreshness:
+                      asOf: "2026-07-08T10:30:00Z"
+                      watermark: "wm-20260708-103000"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/aggregations-query:
+    post:
+      tags:
+        - Device Log Aggregations
+      operationId: searchDeviceLogAggregations
+      summary: Search aggregated device log packages
+      description: |
+        Returns aggregated EHL packages grouped by device, site, or date
+        range. Aggregation packages are the preferred download unit for
+        multi-file requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceLogAggregationQueryRequest"
+            examples:
+              bySite:
+                value:
+                  filters:
+                    dateRange:
+                      from: "2026-01-01T00:00:00Z"
+                      to: "2026-01-31T23:59:59Z"
+                    enterpriseHierarchyNodeIds:
+                      - "EH-100"
+                    aggregationStatuses:
+                      - "AVAILABLE"
+                  page:
+                    pageNumber: 1
+                    pageSize: 25
+      responses:
+        "200":
+          description: Matching device log aggregations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogAggregationListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/aggregations/{aggregationId}:
+    get:
+      tags:
+        - Device Log Aggregations
+      operationId: getDeviceLogAggregation
+      summary: Get aggregated device log package
+      parameters:
+        - $ref: "#/components/parameters/AggregationId"
+      responses:
+        "200":
+          description: Device log aggregation returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogAggregationDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/downloads:
+    post:
+      tags:
+        - Device Log Downloads
+      operationId: createDeviceLogDownload
+      summary: Create device log download
+      description: |
+        Requests a secure download of selected EHL files or an aggregated
+        package. Large packages are prepared asynchronously.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceLogDownloadRequest"
+            examples:
+              files:
+                value:
+                  fileIds:
+                    - "EHL-10001"
+                    - "EHL-10002"
+                  downloadFormat: "ZIP"
+              aggregation:
+                value:
+                  aggregationId: "AGG-3001"
+                  downloadFormat: "ZIP"
+      responses:
+        "202":
+          description: Download accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogDownloadAcceptedResponse"
+              examples:
+                accepted:
+                  value:
+                    downloadId: "DL-EHL-1001"
+                    status: "ACCEPTED"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /device-logs/downloads/{downloadId}:
+    get:
+      tags:
+        - Device Log Downloads
+      operationId: getDeviceLogDownloadStatus
+      summary: Get device log download status
+      parameters:
+        - $ref: "#/components/parameters/DownloadId"
+      responses:
+        "200":
+          description: Download status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceLogDownloadStatusResponse"
+              examples:
+                completed:
+                  value:
+                    downloadId: "DL-EHL-1001"
+                    status: "COMPLETED"
+                    fileName: "ehl-SN001-202601.zip"
+                    fileCount: 2
+                    totalSizeBytes: 2097152
+                    downloadUrl: "https://exports.cqi.example.com/DL-EHL-1001.zip?sig=..."
+                    expiresAt: "2026-07-08T11:31:20Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "EHL-10001"
+
+    CollectionId:
+      name: collectionId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "COL-2001"
+
+    AggregationId:
+      name: aggregationId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "AGG-3001"
+
+    DownloadId:
+      name: downloadId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "DL-EHL-1001"
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Authentication is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Caller does not have access to the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    DeviceLogSummaryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceLogFilter"
+
+    DeviceLogFileQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceLogFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DeviceLogCollectionQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceLogFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DeviceLogAggregationQueryRequest:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          $ref: "#/components/schemas/DeviceLogFilter"
+        page:
+          $ref: "#/components/schemas/PageRequest"
+        sort:
+          $ref: "#/components/schemas/SortRequest"
+
+    DeviceLogDownloadRequest:
+      type: object
+      required:
+        - downloadFormat
+      properties:
+        fileIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EHL-10001"
+            - "EHL-10002"
+        aggregationId:
+          type: string
+          nullable: true
+          example: "AGG-3001"
+        downloadFormat:
+          $ref: "#/components/schemas/DeviceLogDownloadFormat"
+
+    DeviceLogFilter:
+      type: object
+      properties:
+        dateRange:
+          $ref: "#/components/schemas/DateRange"
+
+        deviceIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "DEV-100"
+
+        deviceSerialNumbers:
+          type: array
+          items:
+            type: string
+          example:
+            - "SN001"
+
+        pumpTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - "LVP"
+            - "SYR"
+
+        enterpriseHierarchyNodeIds:
+          type: array
+          items:
+            type: string
+          example:
+            - "EH-100"
+
+        fileStatuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogFileStatus"
+
+        collectionStatuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogJobStatus"
+
+        aggregationStatuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogJobStatus"
+
+        fileFormats:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogFileFormat"
+
+    DateRange:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00Z"
+        to:
+          type: string
+          format: date-time
+          example: "2026-01-31T23:59:59Z"
+
+    DeviceLogSummaryResponse:
+      type: object
+      required:
+        - summary
+        - dataFreshness
+      properties:
+        summary:
+          $ref: "#/components/schemas/DeviceLogSummary"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogFileListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogFile"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogFileDetailResponse:
+      type: object
+      required:
+        - file
+        - dataFreshness
+      properties:
+        file:
+          $ref: "#/components/schemas/DeviceLogFileDetail"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogCollectionListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogCollection"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogCollectionDetailResponse:
+      type: object
+      required:
+        - collection
+        - dataFreshness
+      properties:
+        collection:
+          $ref: "#/components/schemas/DeviceLogCollection"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogAggregationListResponse:
+      type: object
+      required:
+        - items
+        - page
+        - dataFreshness
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceLogAggregation"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogAggregationDetailResponse:
+      type: object
+      required:
+        - aggregation
+        - dataFreshness
+      properties:
+        aggregation:
+          $ref: "#/components/schemas/DeviceLogAggregationDetail"
+        dataFreshness:
+          $ref: "#/components/schemas/DataFreshness"
+
+    DeviceLogDownloadAcceptedResponse:
+      type: object
+      required:
+        - downloadId
+        - status
+      properties:
+        downloadId:
+          type: string
+          example: "DL-EHL-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+
+    DeviceLogDownloadStatusResponse:
+      type: object
+      required:
+        - downloadId
+        - status
+      properties:
+        downloadId:
+          type: string
+          example: "DL-EHL-1001"
+        status:
+          $ref: "#/components/schemas/ExportStatus"
+        fileName:
+          type: string
+          nullable: true
+          example: "ehl-SN001-202601.zip"
+        fileCount:
+          type: integer
+          nullable: true
+          example: 2
+        totalSizeBytes:
+          type: integer
+          format: int64
+          nullable: true
+          example: 2097152
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Secure temporary download URL, if the package is ready.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+
+    DeviceLogSummary:
+      type: object
+      required:
+        - deviceCount
+        - fileCount
+      properties:
+        deviceCount:
+          type: integer
+          minimum: 0
+          example: 240
+        devicesWithLogs:
+          type: integer
+          minimum: 0
+          example: 221
+        devicesMissingLogs:
+          type: integer
+          minimum: 0
+          example: 19
+        fileCount:
+          type: integer
+          minimum: 0
+          example: 1842
+        totalSizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 958440320
+        collectionInProgressCount:
+          type: integer
+          minimum: 0
+          example: 4
+        failedCollectionCount:
+          type: integer
+          minimum: 0
+          example: 2
+        lastCollectedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-31T22:14:00Z"
+
+    DeviceLogFile:
+      type: object
+      required:
+        - fileId
+        - deviceId
+        - status
+        - collectedAt
+      properties:
+        fileId:
+          type: string
+          example: "EHL-10001"
+        deviceId:
+          type: string
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        fileName:
+          type: string
+          nullable: true
+          example: "SN001-20260102.ehl"
+        fileFormat:
+          $ref: "#/components/schemas/DeviceLogFileFormat"
+        fileSizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 1048576
+        status:
+          $ref: "#/components/schemas/DeviceLogFileStatus"
+        periodStart:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-02T23:59:59Z"
+        collectedAt:
+          type: string
+          format: date-time
+          example: "2026-01-03T01:12:00Z"
+
+    DeviceLogFileDetail:
+      allOf:
+        - $ref: "#/components/schemas/DeviceLogFile"
+        - type: object
+          properties:
+            deviceModel:
+              type: string
+              nullable: true
+              example: "Spectrum IQ"
+            checksumSha256:
+              type: string
+              nullable: true
+              example: "a3f1c9..."
+            collectionId:
+              type: string
+              nullable: true
+              example: "COL-2001"
+            aggregationId:
+              type: string
+              nullable: true
+              example: "AGG-3001"
+            enterpriseHierarchyNodeId:
+              type: string
+              nullable: true
+              example: "EH-100"
+            enterpriseGroupName:
+              type: string
+              nullable: true
+              example: "ICU East"
+            sourceSystem:
+              type: string
+              nullable: true
+              example: "IQE"
+            retentionExpiresAt:
+              type: string
+              format: date-time
+              nullable: true
+              example: "2026-07-03T01:12:00Z"
+
+    DeviceLogCollection:
+      type: object
+      required:
+        - collectionId
+        - status
+        - requestedAt
+      properties:
+        collectionId:
+          type: string
+          example: "COL-2001"
+        deviceId:
+          type: string
+          nullable: true
+          example: "DEV-100"
+        deviceSerialNumber:
+          type: string
+          nullable: true
+          example: "SN001"
+        pumpType:
+          type: string
+          nullable: true
+          example: "LVP"
+        status:
+          $ref: "#/components/schemas/DeviceLogJobStatus"
+        requestedAt:
+          type: string
+          format: date-time
+          example: "2026-01-03T01:00:00Z"
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-03T01:01:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-03T01:12:00Z"
+        fileCount:
+          type: integer
+          minimum: 0
+          example: 1
+        totalSizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 1048576
+        failureReason:
+          type: string
+          nullable: true
+
+    DeviceLogAggregation:
+      type: object
+      required:
+        - aggregationId
+        - status
+      properties:
+        aggregationId:
+          type: string
+          example: "AGG-3001"
+        name:
+          type: string
+          nullable: true
+          example: "ICU East January 2026 EHL"
+        scopeType:
+          $ref: "#/components/schemas/DeviceLogAggregationScope"
+        deviceCount:
+          type: integer
+          minimum: 0
+          example: 24
+        fileCount:
+          type: integer
+          minimum: 0
+          example: 180
+        totalSizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 188743680
+        status:
+          $ref: "#/components/schemas/DeviceLogJobStatus"
+        periodStart:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-01T00:00:00Z"
+        periodEnd:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-31T23:59:59Z"
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-02-01T03:00:00Z"
+
+    DeviceLogAggregationDetail:
+      allOf:
+        - $ref: "#/components/schemas/DeviceLogAggregation"
+        - type: object
+          properties:
+            enterpriseHierarchyNodeId:
+              type: string
+              nullable: true
+              example: "EH-100"
+            enterpriseGroupName:
+              type: string
+              nullable: true
+              example: "ICU East"
+            fileIds:
+              type: array
+              items:
+                type: string
+              example:
+                - "EHL-10001"
+                - "EHL-10002"
+
+    DataFreshness:
+      type: object
+      required:
+        - asOf
+      properties:
+        asOf:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        watermark:
+          type: string
+          nullable: true
+          example: "wm-20260708-103000"
+
+    PageRequest:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+          example: 50
+
+    PageMetadata:
+      type: object
+      required:
+        - pageNumber
+        - pageSize
+        - hasMore
+      properties:
+        pageNumber:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        totalItems:
+          type: integer
+          nullable: true
+          description: Optional. May be omitted when count is expensive.
+          example: 1250
+        hasMore:
+          type: boolean
+          example: true
+
+    SortRequest:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "collectedAt"
+        direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    DeviceLogFileStatus:
+      type: string
+      enum:
+        - AVAILABLE
+        - PROCESSING
+        - FAILED
+        - EXPIRED
+        - UNAVAILABLE
+        - UNKNOWN
+
+    DeviceLogJobStatus:
+      type: string
+      enum:
+        - REQUESTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - CANCELLED
+        - UNKNOWN
+
+    DeviceLogFileFormat:
+      type: string
+      enum:
+        - EHL
+        - LOG
+        - ZIP
+        - JSON
+        - UNKNOWN
+
+    DeviceLogDownloadFormat:
+      type: string
+      enum:
+        - EHL
+        - ZIP
+
+    DeviceLogAggregationScope:
+      type: string
+      enum:
+        - DEVICE
+        - ENTERPRISE_HIERARCHY
+        - DATE_RANGE
+        - CUSTOM
+
+    SortDirection:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ExportStatus:
+      type: string
+      enum:
+        - ACCEPTED
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - EXPIRED
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CQI_DEVICE_LOGS_INVALID_REQUEST"
+        message:
+          type: string
+          example: "Invalid device logs query request."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          nullable: true
+          example: "0HN7ABC123XYZ"
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          example: "The from date must be earlier than the to date."
+        target:
+          type: string
+          nullable: true
+          example: "filters.dateRange"

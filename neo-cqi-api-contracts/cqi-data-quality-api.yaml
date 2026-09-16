@@ -1398,8 +1398,10 @@ components:
         - LIMITS
         - DOSE_RATE_CHANGE
         - DEVICE_USAGE
+        - SYRINGE_USAGE
         - INFUSION_STORY
         - GUARDIAN_ALERTS
+        - DEVICE_LOGS
         - DATA_OPERATIONS
         - UNKNOWN
 
@@ -1410,8 +1412,10 @@ components:
         - LIMITS
         - DOSE_RATE_CHANGE
         - DEVICE_USAGE
+        - SYRINGE_USAGE
         - INFUSION_STORY
         - GUARDIAN_ALERTS
+        - DEVICE_LOGS
 
     PipelineGroup:
       type: string

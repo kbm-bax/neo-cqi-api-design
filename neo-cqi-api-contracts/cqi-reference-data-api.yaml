@@ -88,7 +88,7 @@ paths:
                   - filterName: drugLibraryVersion
                     displayName: Drug Library
                     filterType: SINGLE_SELECT
-                    applicableReportTypes: [COMPLIANCE, LIMITS, DEVICE_USAGE]
+                    applicableReportTypes: [COMPLIANCE, LIMITS, DEVICE_USAGE, SYRINGE_USAGE]
                     required: true
                     valueSource: DRUG_LIBRARY_VERSIONS
                 dataFreshness:
@@ -735,7 +735,7 @@ paths:
                   - filterName: drugLibraryVersion
                     displayName: Drug Library
                     filterType: SINGLE_SELECT
-                    applicableReportTypes: [COMPLIANCE, LIMITS, DEVICE_USAGE]
+                    applicableReportTypes: [COMPLIANCE, LIMITS, DEVICE_USAGE, SYRINGE_USAGE]
                     required: true
                     valueSource: DRUG_LIBRARY_VERSIONS
                   - filterName: careArea
@@ -898,8 +898,10 @@ components:
         - LIMITS
         - DOSE_RATE_CHANGE
         - DEVICE_USAGE
+        - SYRINGE_USAGE
         - INFUSION_STORY
         - GUARDIAN_ALERTS
+        - DEVICE_LOGS
 
     EnterpriseHierarchyNodeType:
       type: string

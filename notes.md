@@ -1295,23 +1295,25 @@ GET  /api/cqi/v1/device-usage/exports/{exportId}
 
 ### syringe-usage-api
 
+The current CQI notes name **Syringe usage analysis** as a capability and place
+**Syringe Usage Reporting** in the Infusions Reporting Context. They do not
+define syringe-specific measures, dimensions, events, or report fields.
+
+This contract therefore reuses only:
+
+- the Infusion entity owned by Infusions Reporting Context
+- shared CQI filters and group-by dimensions already used by compliance, limits,
+  and dose-rate-change APIs
+- the summary / breakdown / trends / infusion list / export query shape used by
+  those sibling reporting APIs
+
+Syringe-specific fields are intentionally omitted until they are documented.
+
 #### Responsibilities
 ##### Owns:
 
 ```text
-Syringe Usage Infusion
-Syringe Size Mix
-Syringe Brand Mix
-Syringe Utilization
-Syringe Change Event
-Empty Syringe Event
-Near Empty Syringe Event
-Syringe Usage Summary
-Syringe Usage Breakdown
-Syringe Usage Trend
-Syringe Size Distribution
-Syringe Usage Export View
-
+Syringe Usage Reporting
 ```
 
 
@@ -1355,24 +1357,6 @@ EnterpriseHierarchyNode
 Infusion
 InfusionStarted
 InfusionCompleted
-SyringeLoaded
-SyringeChanged
-VolumeInfusedUpdated
-RemainingVolumeUpdated
-
-```
-
-###### from Pump/Event Normalization Context:
-
-```text
-
-SyringeSize
-SyringeBrand
-SyringeModel
-ProgrammedVolume
-EmptySyringeEvent
-NearEmptySyringeEvent
-SourceEventReference
 
 ```
 
@@ -1391,87 +1375,20 @@ ProcessingStatus
 
 ```text
 
-Core model
+Known from Infusions Reporting Context
 
-SyringeUsageInfusion
- ├─ syringeUsageInfusionId
+Infusion
  ├─ infusionId
  ├─ startedAt
  ├─ endedAt
- ├─ syringeSizeMl
- ├─ syringeBrand
- ├─ syringeModel
- ├─ programmedVolumeMl
- ├─ volumeInfusedMl
- ├─ remainingVolumeMl
- ├─ syringeUtilizationPercent
- ├─ syringeChangeCount
- ├─ emptySyringeEventCount
- ├─ nearEmptyEventCount
  ├─ drugLibraryVersionId
  ├─ careAreaId
  ├─ drugId
  ├─ deviceId
- ├─ pumpType
- └─ sourceEventReference
+ └─ pumpType
 
-```
-
-```text
-
-Analytical model
-
-SyringeUsageSummary
- ├─ totalSyringeInfusions
- ├─ uniqueDeviceCount
- ├─ uniqueSyringeSizeCount
- ├─ totalVolumeInfusedMl
- ├─ averageSyringeUtilizationPercent
- ├─ syringeChangeCount
- ├─ emptySyringeEventCount
- ├─ nearEmptyEventCount
- └─ infusionsWithSyringeChangeCount
-
-```
-
-```text
-
-Breakdown Model
-SyringeUsageBreakdown
- ├─ groupBy
- └─ items[]
-      ├─ id
-      ├─ name
-      ├─ totalSyringeInfusions
-      ├─ totalVolumeInfusedMl
-      ├─ averageSyringeUtilizationPercent
-      ├─ syringeChangeCount
-      └─ emptySyringeEventCount
-
-```
-
-```text
-
-Detail model
-SyringeUsageInfusionDetail
- ├─ syringeUsageInfusionId
- ├─ infusionId
- ├─ startedAt
- ├─ endedAt
- ├─ drugName
- ├─ careAreaName
- ├─ deviceSerialNumber
- ├─ pumpType
- ├─ syringeSizeMl
- ├─ syringeBrand
- ├─ syringeModel
- ├─ programmedVolumeMl
- ├─ volumeInfusedMl
- ├─ remainingVolumeMl
- ├─ syringeUtilizationPercent
- ├─ syringeChangeCount
- ├─ canShowInfusionStory
- └─ sourceEventReference
+Syringe-specific measures and dimensions
+ └─ TBD — not defined in current CQI design notes
 
 ```
 
@@ -1479,16 +1396,7 @@ SyringeUsageInfusionDetail
 
 ```text
 
-SyringeUsageInfusionRecorded
-SyringeChangeRecorded
-EmptySyringeEventRecorded
-NearEmptySyringeEventRecorded
-SyringeUsageSummaryCalculated
-SyringeUsageBreakdownCalculated
-SyringeUsageTrendCalculated
-SyringeSizeDistributionCalculated
-SyringeUsageExportRequested
-SyringeUsageDataRefreshed
+TBD — syringe-specific domain events are not defined in the current notes
 
 ```
 
@@ -1499,12 +1407,20 @@ SyringeUsageDataRefreshed
 POST /api/cqi/v1/syringe-usage/summary-query
 POST /api/cqi/v1/syringe-usage/breakdown-query
 POST /api/cqi/v1/syringe-usage/trends-query
-POST /api/cqi/v1/syringe-usage/size-distribution-query
 POST /api/cqi/v1/syringe-usage/infusions-query
 GET  /api/cqi/v1/syringe-usage/infusions/{infusionId}
-GET  /api/cqi/v1/syringe-usage/infusions/{infusionId}/infusion-story-reference
 POST /api/cqi/v1/syringe-usage/exports
 GET  /api/cqi/v1/syringe-usage/exports/{exportId}
+
+```
+
+##### Open questions
+
+```text
+
+What measures does the current CQI syringe usage report actually return?
+What report-specific filters or group-by dimensions does it use?
+What infusion-level columns appear on the syringe usage grid and export?
 
 ```
 

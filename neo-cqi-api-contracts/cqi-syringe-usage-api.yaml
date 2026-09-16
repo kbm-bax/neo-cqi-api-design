@@ -6,9 +6,15 @@ info:
   description: |
     CQI Syringe Usage API for Neo CQI.
 
-    This API provides syringe-usage summaries, breakdowns, trends,
-    syringe-size distribution, infusion-level drill-down, infusion-story
-    references, and export support for Novum IQ syringe-pump infusions.
+    This API is the Infusions Reporting Context contract for Syringe Usage
+    Reporting, as named in the current CQI capabilities and bounded-context
+    notes.
+
+    It uses only the shared CQI reporting envelope already defined by the
+    sibling infusion reports in this repository (filters, grouping, paging,
+    export, and data freshness). It does not define syringe-specific measures
+    or dimensions. Those fields are omitted until they are documented in the
+    design notes or source report.
 
     The API is storage-agnostic. It does not expose SQL, lakehouse zones,
     table names, partitions, or physical schema details.
@@ -22,17 +28,15 @@ security:
 
 tags:
   - name: Syringe Usage Summary
-    description: Aggregate syringe-usage KPIs for a selected infusion population.
+    description: Infusion-count summary for a selected population.
   - name: Syringe Usage Breakdown
-    description: Syringe-usage metrics grouped by CQI business dimensions.
+    description: Infusion counts grouped by shared CQI dimensions.
   - name: Syringe Usage Trends
-    description: Syringe-usage metrics over time.
-  - name: Syringe Size Distribution
-    description: Infusion and volume distribution across syringe sizes and brands.
+    description: Infusion counts over time.
   - name: Syringe Usage Infusions
-    description: Infusion-level syringe usage query, details, and story references.
+    description: Infusion-level listing and detail using shared infusion identity fields.
   - name: Syringe Usage Exports
-    description: Export syringe-usage data.
+    description: Export syringe-usage report rows.
 
 paths:
 
@@ -43,8 +47,9 @@ paths:
       operationId: getSyringeUsageSummary
       summary: Get syringe usage summary
       description: |
-        Returns aggregate syringe-usage metrics for a selected infusion
-        population. Used by CQI dashboards, KPI widgets, and report headers.
+        Returns the infusion count for a selected population.
+
+        Report-specific syringe measures are not included in this contract.
       requestBody:
         required: true
         content:
@@ -62,13 +67,9 @@ paths:
                     drugLibraryVersionIds:
                       - "DLV-1002"
                     careAreaIds:
-                      - "CA-NICU"
+                      - "CA-ICU"
                     pumpTypes:
                       - "SYR"
-                    syringeSizesMl:
-                      - 10
-                      - 20
-                      - 50
       responses:
         "200":
           description: Syringe usage summary returned successfully.
@@ -80,15 +81,7 @@ paths:
                 success:
                   value:
                     summary:
-                      totalSyringeInfusions: 4820
-                      uniqueDeviceCount: 86
-                      uniqueSyringeSizeCount: 5
-                      totalVolumeInfusedMl: 18640.5
-                      averageSyringeUtilizationPercent: 62.4
-                      syringeChangeCount: 318
-                      emptySyringeEventCount: 94
-                      nearEmptyEventCount: 210
-                      infusionsWithSyringeChangeCount: 275
+                      totalInfusions: 4820
                     dataFreshness:
                       asOf: "2026-07-08T10:30:00Z"
                       watermark: "wm-20260708-103000"
@@ -108,8 +101,8 @@ paths:
       operationId: getSyringeUsageBreakdown
       summary: Get syringe usage breakdown
       description: |
-        Returns syringe-usage metrics grouped by a selected CQI business
-        dimension such as syringe size, syringe brand, care area, or drug.
+        Returns infusion counts grouped by a shared CQI dimension already used
+        by other Infusions Reporting APIs.
       requestBody:
         required: true
         content:
@@ -117,10 +110,10 @@ paths:
             schema:
               $ref: "#/components/schemas/SyringeUsageBreakdownRequest"
             examples:
-              bySyringeSize:
-                summary: Syringe usage breakdown by syringe size
+              byCareArea:
+                summary: Syringe usage breakdown by care area
                 value:
-                  groupBy: "SYRINGE_SIZE"
+                  groupBy: "CARE_AREA"
                   filters:
                     dateRange:
                       from: "2026-01-01T00:00:00Z"
@@ -137,22 +130,14 @@ paths:
               examples:
                 success:
                   value:
-                    groupBy: "SYRINGE_SIZE"
+                    groupBy: "CARE_AREA"
                     items:
-                      - id: "SIZE-10"
-                        name: "10 mL"
-                        totalSyringeInfusions: 1800
-                        totalVolumeInfusedMl: 9200.0
-                        averageSyringeUtilizationPercent: 71.2
-                        syringeChangeCount: 40
-                        emptySyringeEventCount: 18
-                      - id: "SIZE-50"
-                        name: "50 mL"
-                        totalSyringeInfusions: 950
-                        totalVolumeInfusedMl: 6100.4
-                        averageSyringeUtilizationPercent: 48.6
-                        syringeChangeCount: 120
-                        emptySyringeEventCount: 31
+                      - id: "CA-ICU"
+                        name: "ICU"
+                        totalInfusions: 1800
+                      - id: "CA-ER"
+                        name: "Emergency"
+                        totalInfusions: 950
                     dataFreshness:
                       asOf: "2026-07-08T10:30:00Z"
                       watermark: "wm-20260708-103000"
@@ -171,7 +156,7 @@ paths:
         - Syringe Usage Trends
       operationId: getSyringeUsageTrends
       summary: Get syringe usage trend
-      description: Returns syringe-usage metrics over time.
+      description: Returns infusion counts over time.
       requestBody:
         required: true
         content:
@@ -186,8 +171,6 @@ paths:
                     dateRange:
                       from: "2026-01-01T00:00:00Z"
                       to: "2026-01-31T23:59:59Z"
-                    pumpTypes:
-                      - "SYR"
       responses:
         "200":
           description: Syringe usage trend returned successfully.
@@ -202,69 +185,7 @@ paths:
                     points:
                       - periodStart: "2026-01-01T00:00:00Z"
                         periodEnd: "2026-01-01T23:59:59Z"
-                        totalSyringeInfusions: 160
-                        totalVolumeInfusedMl: 620.5
-                        syringeChangeCount: 12
-                        emptySyringeEventCount: 3
-                    dataFreshness:
-                      asOf: "2026-07-08T10:30:00Z"
-                      watermark: "wm-20260708-103000"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  /syringe-usage/size-distribution-query:
-    post:
-      tags:
-        - Syringe Size Distribution
-      operationId: getSyringeSizeDistribution
-      summary: Get syringe size distribution
-      description: |
-        Returns infusion count and volume distribution across syringe sizes
-        and optional brands. Used by CQI size-mix charts and drug-library
-        syringe configuration reviews.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SyringeSizeDistributionRequest"
-            examples:
-              default:
-                value:
-                  filters:
-                    dateRange:
-                      from: "2026-01-01T00:00:00Z"
-                      to: "2026-01-31T23:59:59Z"
-                    careAreaIds:
-                      - "CA-NICU"
-                  includeBrandSplit: true
-      responses:
-        "200":
-          description: Syringe size distribution returned successfully.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SyringeSizeDistributionResponse"
-              examples:
-                success:
-                  value:
-                    buckets:
-                      - syringeSizeMl: 10
-                        syringeBrand: "BD"
-                        infusionCount: 820
-                        totalVolumeInfusedMl: 4100.0
-                        averageUtilizationPercent: 74.1
-                      - syringeSizeMl: 10
-                        syringeBrand: "Terumo"
-                        infusionCount: 310
-                        totalVolumeInfusedMl: 1480.2
-                        averageUtilizationPercent: 69.8
+                        totalInfusions: 160
                     dataFreshness:
                       asOf: "2026-07-08T10:30:00Z"
                       watermark: "wm-20260708-103000"
@@ -283,7 +204,9 @@ paths:
         - Syringe Usage Infusions
       operationId: searchSyringeUsageInfusions
       summary: Search syringe usage infusions
-      description: Returns syringe-pump infusions for grid, drill-down, and export preparation.
+      description: |
+        Returns infusion rows using the shared infusion identity fields already
+        used by other Infusions Reporting APIs.
       requestBody:
         required: true
         content:
@@ -291,15 +214,12 @@ paths:
             schema:
               $ref: "#/components/schemas/SyringeUsageInfusionQueryRequest"
             examples:
-              withChanges:
+              default:
                 value:
                   filters:
                     dateRange:
                       from: "2026-01-01T00:00:00Z"
                       to: "2026-01-31T23:59:59Z"
-                    syringeSizesMl:
-                      - 50
-                    hasSyringeChange: true
                   page:
                     pageNumber: 1
                     pageSize: 50
@@ -317,22 +237,16 @@ paths:
                 success:
                   value:
                     items:
-                      - syringeUsageInfusionId: "SUI-10001"
-                        infusionId: "INF-123"
-                        deviceSerialNumber: "SN-SYR-001"
+                      - infusionId: "INF-123"
+                        deviceSerialNumber: "SN001"
                         pumpType: "SYR"
-                        careAreaName: "NICU"
-                        drugName: "Morphine"
-                        syringeSizeMl: 50
-                        syringeBrand: "BD"
-                        volumeInfusedMl: 28.4
-                        syringeUtilizationPercent: 56.8
-                        syringeChangeCount: 1
+                        careAreaName: "ICU"
+                        drugName: "Heparin"
                         startedAt: "2026-01-02T10:35:00Z"
                     page:
                       pageNumber: 1
                       pageSize: 50
-                      totalItems: 275
+                      totalItems: 4820
                       hasMore: true
                     dataFreshness:
                       asOf: "2026-07-08T10:30:00Z"
@@ -365,55 +279,19 @@ paths:
                 success:
                   value:
                     infusion:
-                      syringeUsageInfusionId: "SUI-10001"
                       infusionId: "INF-123"
-                      deviceId: "DEV-200"
-                      deviceSerialNumber: "SN-SYR-001"
+                      deviceId: "DEV-100"
+                      deviceSerialNumber: "SN001"
                       pumpType: "SYR"
-                      careAreaId: "CA-NICU"
-                      careAreaName: "NICU"
-                      drugId: "DRUG-MORPHINE"
-                      drugName: "Morphine"
-                      syringeSizeMl: 50
-                      syringeBrand: "BD"
-                      syringeModel: "Luer-Lok"
-                      programmedVolumeMl: 30.0
-                      volumeInfusedMl: 28.4
-                      remainingVolumeMl: 1.6
-                      syringeUtilizationPercent: 56.8
-                      syringeChangeCount: 1
-                      emptySyringeEventCount: 0
-                      nearEmptyEventCount: 1
+                      careAreaId: "CA-ICU"
+                      careAreaName: "ICU"
+                      drugId: "DRUG-HEPARIN"
+                      drugName: "Heparin"
                       startedAt: "2026-01-02T10:35:00Z"
                       endedAt: "2026-01-02T14:10:00Z"
-                      canShowInfusionStory: true
                     dataFreshness:
                       asOf: "2026-07-08T10:30:00Z"
                       watermark: "wm-20260708-103000"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  /syringe-usage/infusions/{infusionId}/infusion-story-reference:
-    get:
-      tags:
-        - Syringe Usage Infusions
-      operationId: getSyringeUsageInfusionStoryReference
-      summary: Get infusion story reference for a syringe usage infusion
-      parameters:
-        - $ref: "#/components/parameters/InfusionId"
-      responses:
-        "200":
-          description: Infusion story reference returned successfully.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/InfusionStoryReferenceResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -448,10 +326,6 @@ paths:
                     - "deviceSerialNumber"
                     - "careAreaName"
                     - "drugName"
-                    - "syringeSizeMl"
-                    - "syringeBrand"
-                    - "volumeInfusedMl"
-                    - "syringeUtilizationPercent"
                     - "startedAt"
       responses:
         "202":
@@ -599,18 +473,6 @@ components:
         filters:
           $ref: "#/components/schemas/SyringeUsageFilter"
 
-    SyringeSizeDistributionRequest:
-      type: object
-      required:
-        - filters
-      properties:
-        filters:
-          $ref: "#/components/schemas/SyringeUsageFilter"
-        includeBrandSplit:
-          type: boolean
-          default: false
-          description: When true, distribution buckets are split by syringe brand.
-
     SyringeUsageInfusionQueryRequest:
       type: object
       required:
@@ -642,14 +504,13 @@ components:
             - "deviceSerialNumber"
             - "careAreaName"
             - "drugName"
-            - "syringeSizeMl"
-            - "syringeBrand"
-            - "volumeInfusedMl"
-            - "syringeUtilizationPercent"
             - "startedAt"
 
     SyringeUsageFilter:
       type: object
+      description: |
+        Shared CQI report filters already used by compliance, limits, and
+        dose-rate-change APIs. No syringe-specific filters are defined yet.
       properties:
         dateRange:
           $ref: "#/components/schemas/DateRange"
@@ -666,28 +527,28 @@ components:
           items:
             type: string
           example:
-            - "CA-NICU"
+            - "CA-ICU"
 
         drugIds:
           type: array
           items:
             type: string
           example:
-            - "DRUG-MORPHINE"
+            - "DRUG-HEPARIN"
 
         deviceIds:
           type: array
           items:
             type: string
           example:
-            - "DEV-200"
+            - "DEV-100"
 
         deviceSerialNumbers:
           type: array
           items:
             type: string
           example:
-            - "SN-SYR-001"
+            - "SN001"
 
         pumpTypes:
           type: array
@@ -702,31 +563,6 @@ components:
             type: string
           example:
             - "EH-100"
-
-        syringeSizesMl:
-          type: array
-          items:
-            type: number
-            format: double
-          example:
-            - 10
-            - 20
-            - 50
-
-        syringeBrands:
-          type: array
-          items:
-            type: string
-          example:
-            - "BD"
-            - "Terumo"
-
-        hasSyringeChange:
-          type: boolean
-          description: When true, only infusions with at least one syringe change.
-
-        hasEmptySyringeEvent:
-          type: boolean
 
     DateRange:
       type: object
@@ -786,19 +622,6 @@ components:
         dataFreshness:
           $ref: "#/components/schemas/DataFreshness"
 
-    SyringeSizeDistributionResponse:
-      type: object
-      required:
-        - buckets
-        - dataFreshness
-      properties:
-        buckets:
-          type: array
-          items:
-            $ref: "#/components/schemas/SyringeSizeDistributionBucket"
-        dataFreshness:
-          $ref: "#/components/schemas/DataFreshness"
-
     SyringeUsageInfusionListResponse:
       type: object
       required:
@@ -822,36 +645,9 @@ components:
         - dataFreshness
       properties:
         infusion:
-          $ref: "#/components/schemas/SyringeUsageInfusionDetail"
+          $ref: "#/components/schemas/SyringeUsageInfusion"
         dataFreshness:
           $ref: "#/components/schemas/DataFreshness"
-
-    InfusionStoryReferenceResponse:
-      type: object
-      required:
-        - infusionId
-        - canShowInfusionStory
-      properties:
-        infusionId:
-          type: string
-          example: "INF-123"
-        canShowInfusionStory:
-          type: boolean
-          example: true
-        reason:
-          type: string
-          nullable: true
-          example: "Infusion story is available for this syringe infusion."
-        storyReference:
-          type: object
-          nullable: true
-          properties:
-            infusionId:
-              type: string
-              example: "INF-123"
-            href:
-              type: string
-              example: "/api/cqi/v1/infusion-stories/INF-123"
 
     SyringeUsageExportAcceptedResponse:
       type: object
@@ -892,95 +688,38 @@ components:
     SyringeUsageSummary:
       type: object
       required:
-        - totalSyringeInfusions
+        - totalInfusions
       properties:
-        totalSyringeInfusions:
+        totalInfusions:
           type: integer
           minimum: 0
           example: 4820
-        uniqueDeviceCount:
-          type: integer
-          minimum: 0
-          example: 86
-        uniqueSyringeSizeCount:
-          type: integer
-          minimum: 0
-          example: 5
-        totalVolumeInfusedMl:
-          type: number
-          format: double
-          minimum: 0
-          example: 18640.5
-        averageSyringeUtilizationPercent:
-          type: number
-          format: double
-          nullable: true
-          minimum: 0
-          maximum: 100
-          example: 62.4
-        syringeChangeCount:
-          type: integer
-          minimum: 0
-          example: 318
-        emptySyringeEventCount:
-          type: integer
-          minimum: 0
-          example: 94
-        nearEmptyEventCount:
-          type: integer
-          minimum: 0
-          example: 210
-        infusionsWithSyringeChangeCount:
-          type: integer
-          minimum: 0
-          example: 275
+          description: Infusion count for the selected population.
 
     SyringeUsageBreakdownItem:
       type: object
       required:
         - id
         - name
-        - totalSyringeInfusions
+        - totalInfusions
       properties:
         id:
           type: string
-          example: "SIZE-10"
+          example: "CA-ICU"
         name:
           type: string
-          example: "10 mL"
-        totalSyringeInfusions:
+          example: "ICU"
+        totalInfusions:
           type: integer
           minimum: 0
           example: 1800
-        totalVolumeInfusedMl:
-          type: number
-          format: double
-          minimum: 0
-          example: 9200.0
-        averageSyringeUtilizationPercent:
-          type: number
-          format: double
-          nullable: true
-          example: 71.2
-        syringeChangeCount:
-          type: integer
-          minimum: 0
-          example: 40
-        emptySyringeEventCount:
-          type: integer
-          minimum: 0
-          example: 18
-        uniqueDeviceCount:
-          type: integer
-          minimum: 0
-          example: 22
 
     SyringeUsageTrendPoint:
       type: object
       required:
         - periodStart
         - periodEnd
-        - totalSyringeInfusions
+        - totalInfusions
       properties:
         periodStart:
           type: string
@@ -990,79 +729,31 @@ components:
           type: string
           format: date-time
           example: "2026-01-01T23:59:59Z"
-        totalSyringeInfusions:
+        totalInfusions:
           type: integer
           minimum: 0
           example: 160
-        totalVolumeInfusedMl:
-          type: number
-          format: double
-          minimum: 0
-          example: 620.5
-        syringeChangeCount:
-          type: integer
-          minimum: 0
-          example: 12
-        emptySyringeEventCount:
-          type: integer
-          minimum: 0
-          example: 3
-        averageSyringeUtilizationPercent:
-          type: number
-          format: double
-          nullable: true
-          example: 61.8
-
-    SyringeSizeDistributionBucket:
-      type: object
-      required:
-        - syringeSizeMl
-        - infusionCount
-      properties:
-        syringeSizeMl:
-          type: number
-          format: double
-          example: 10
-        syringeBrand:
-          type: string
-          nullable: true
-          example: "BD"
-        infusionCount:
-          type: integer
-          minimum: 0
-          example: 820
-        totalVolumeInfusedMl:
-          type: number
-          format: double
-          minimum: 0
-          example: 4100.0
-        averageUtilizationPercent:
-          type: number
-          format: double
-          nullable: true
-          example: 74.1
 
     SyringeUsageInfusion:
       type: object
+      description: |
+        Shared infusion identity fields used by other Infusions Reporting APIs.
+        Syringe-specific attributes are not defined in this contract.
       required:
-        - syringeUsageInfusionId
         - infusionId
         - startedAt
       properties:
-        syringeUsageInfusionId:
-          type: string
-          example: "SUI-10001"
         infusionId:
           type: string
           example: "INF-123"
         deviceId:
           type: string
           nullable: true
-          example: "DEV-200"
+          example: "DEV-100"
         deviceSerialNumber:
           type: string
           nullable: true
-          example: "SN-SYR-001"
+          example: "SN001"
         pumpType:
           type: string
           nullable: true
@@ -1074,42 +765,19 @@ components:
         careAreaId:
           type: string
           nullable: true
-          example: "CA-NICU"
+          example: "CA-ICU"
         careAreaName:
           type: string
           nullable: true
-          example: "NICU"
+          example: "ICU"
         drugId:
           type: string
           nullable: true
-          example: "DRUG-MORPHINE"
+          example: "DRUG-HEPARIN"
         drugName:
           type: string
           nullable: true
-          example: "Morphine"
-        syringeSizeMl:
-          type: number
-          format: double
-          nullable: true
-          example: 50
-        syringeBrand:
-          type: string
-          nullable: true
-          example: "BD"
-        volumeInfusedMl:
-          type: number
-          format: double
-          nullable: true
-          example: 28.4
-        syringeUtilizationPercent:
-          type: number
-          format: double
-          nullable: true
-          example: 56.8
-        syringeChangeCount:
-          type: integer
-          minimum: 0
-          example: 1
+          example: "Heparin"
         startedAt:
           type: string
           format: date-time
@@ -1119,76 +787,6 @@ components:
           format: date-time
           nullable: true
           example: "2026-01-02T14:10:00Z"
-
-    SyringeUsageInfusionDetail:
-      allOf:
-        - $ref: "#/components/schemas/SyringeUsageInfusion"
-        - type: object
-          properties:
-            syringeModel:
-              type: string
-              nullable: true
-              example: "Luer-Lok"
-            programmedVolumeMl:
-              type: number
-              format: double
-              nullable: true
-              example: 30.0
-            remainingVolumeMl:
-              type: number
-              format: double
-              nullable: true
-              example: 1.6
-            emptySyringeEventCount:
-              type: integer
-              minimum: 0
-              example: 0
-            nearEmptyEventCount:
-              type: integer
-              minimum: 0
-              example: 1
-            concentration:
-              $ref: "#/components/schemas/MeasuredValue"
-            doseRate:
-              $ref: "#/components/schemas/MeasuredValue"
-            sourceEventReference:
-              $ref: "#/components/schemas/SourceEventReference"
-            canShowInfusionStory:
-              type: boolean
-              example: true
-            infusionStoryAvailabilityReason:
-              type: string
-              nullable: true
-              example: "Infusion story available."
-
-    MeasuredValue:
-      type: object
-      properties:
-        value:
-          type: number
-          format: double
-          nullable: true
-          example: 1.2
-        unit:
-          type: string
-          nullable: true
-          example: "mg/hr"
-
-    SourceEventReference:
-      type: object
-      properties:
-        sourceSystem:
-          type: string
-          nullable: true
-          example: "PUMP_EVENT"
-        sourceEventId:
-          type: string
-          nullable: true
-          example: "PUMP-EVT-9001"
-        eventCode:
-          type: string
-          nullable: true
-          example: "SYRINGE_LOADED"
 
     DataFreshness:
       type: object
@@ -1252,9 +850,8 @@ components:
 
     SyringeUsageGroupBy:
       type: string
+      description: Shared grouping dimensions from sibling Infusions Reporting APIs.
       enum:
-        - SYRINGE_SIZE
-        - SYRINGE_BRAND
         - DRUG_LIBRARY_VERSION
         - CARE_AREA
         - DRUG
